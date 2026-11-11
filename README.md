@@ -1,24 +1,41 @@
 # SurfacePlugins
 
 Foundation-only Swift 6 value-state plugins. Each product can be imported independently;
-there is no umbrella product. Production plugins depend only on SurfacePluginContracts.
+there is no umbrella product. Production plugins depend on SurfacePluginContracts and, for device simulations, the
+Foundation-only SimulationContracts utility. Plugins never import one another.
 SurfacePluginConformance is opt-in test support and has no testing-framework dependency.
 
+Host builds commit a `configs/surface_plugins.lock.json` containing the repository URL and
+one complete 40-character commit revision. A host-owned Python stdlib + Git manager materializes
+that committed revision into `build/dependencies/SurfacePlugins`. Its Package.swift selects only
+needed products from that managed path, after read-only ownership/revision/dirty verification:
+
 ```swift
-// In the host Package.swift:
-import Foundation
-let plugins: Package.Dependency = ProcessInfo.processInfo.environment["SURFACE_PLUGINS_PATH"]
-    .map { .package(path: $0) }
-    ?? .package(url: "https://github.com/NorthBoundWisdom/SurfacePlugins.git", exact: "0.1.0")
-// Add plugins to package.dependencies. A host target selects a single product:
-// .product(name: "SurfacePluginContracts", package: "SurfacePlugins")
+.package(path: "build/dependencies/SurfacePlugins")
+// In the chosen host target's dependencies:
+.product(name: "SurfacePluginContracts", package: "SurfacePlugins")
 ```
 
-The remote repository exists, but this implementation has not been pushed and the exact
-`0.1.0` version has not been published. A local override is still required for integration:
-`SURFACE_PLUGINS_PATH=../SurfacePlugins swift test`. Keep overrides in the shell or an
-ignored host build.local.json; never commit absolute paths. Product independence can be
-checked with `swift build --target SurfacePluginContracts` (no plugin gets compiled).
+The remote repository exists, but this implementation has not been pushed and `0.1.0` has not
+been published. Before publishing, obtain committed objects from the local Git checkout:
+
+```sh
+export SURFACE_PLUGINS_SOURCE=../SurfacePlugins
+python3 configs/surface_plugins_dependency.py ensure
+swift test --build-path build/swiftpm
+```
+
+These manager commands run inside a host repository. After a deliberate lock update, use its
+`update` command for an existing clean manager-owned cache. `SURFACE_PLUGINS_SOURCE` is only a
+Git fetch source: uncommitted worktree edits are never compiled. Legacy `SURFACE_PLUGINS_PATH`
+is accepted only as the same fetch-source override, not a direct dependency path. Different
+SOURCE/PATH overrides are an error. Keep local source overrides in the shell or ignored host
+build.local.json; never commit absolute paths. The hosts share manager implementation and lock
+format while each builds independently from its own managed cache. No branch/tag resolution or
+second host checkout is required. Publication remains a separate user decision.
+
+Inside this package, product independence can be checked with
+`swift build --target SurfacePluginContracts` (no plugin gets compiled).
 
 The host owns parameter values and validates its write policy. ParameterDefinition validates
 both constructors and JSON decoding; defaultValue is required and may be clamped by the host.
@@ -47,7 +64,7 @@ The host drives `.advance` using a monotonic clock. Absolute deadlines preserve 
 0.45 / 0.55-second startup stages and 0.60 / 0.45-second post-approval stages. A large jump emits
 every due stage in order and waits for explicit approval. Plugin events carry stable status
 keys and numeric progress; snapshots carry only semantic indicators. `interrupt(_:at:)`
-explicitly declines/interupts one slot without accidentally approving or stopping other slots.
+explicitly declines/interrupts one slot without accidentally approving or stopping other slots.
 `stop` interrupts every active slot and cancels all schedules; `start` does not resume them.
 AgentStateMachine exposes typed transition/updateProgress for host backend adapters, with
 finite, nondecreasing per-slot time validation and structured errors.
