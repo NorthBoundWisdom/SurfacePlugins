@@ -14,7 +14,8 @@ let plugins: Package.Dependency = ProcessInfo.processInfo.environment["SURFACE_P
 // .product(name: "SurfacePluginContracts", package: "SurfacePlugins")
 ```
 
-The remote repository and version are planned, not yet published. Local integration:
+The remote repository exists, but this implementation has not been pushed and the exact
+`0.1.0` version has not been published. A local override is still required for integration:
 `SURFACE_PLUGINS_PATH=../SurfacePlugins swift test`. Keep overrides in the shell or an
 ignored host build.local.json; never commit absolute paths. Product independence can be
 checked with `swift build --target SurfacePluginContracts` (no plugin gets compiled).
@@ -34,3 +35,19 @@ No physical layout or presentation value is part of the contract.
 Run `swift build --build-path build/swiftpm`, `swift test --build-path build/swiftpm`, and
 `python3 configs/check_boundaries.py`. CI is configured for macOS and Linux; local checks do
 not claim Linux or real-device qualification. The two layout examples exist only in tests.
+
+AgentPlugin is an independent product (`.product(name: "AgentPlugin", package: "SurfacePlugins")`).
+It provides AgentRunState, AgentSlot, AgentStateMachine, AgentApprovalPolicy, and AgentPlugin.
+Initialize with `try AgentPlugin(slotCount: 8, approvalPolicy: .anyOrigin, at: 0)` and invoke
+`agent.primary` with a one-based index. The default count is configuration, not a contract limit.
+Use `.interfaceOnly` for instances that must refuse hardware/remote approvals. This plugin's
+backend is mock; real backend I/O and identity checks remain host responsibilities.
+
+The host drives `.advance` using a monotonic clock. Absolute deadlines preserve the original
+0.45 / 0.55-second startup stages and 0.60 / 0.45-second post-approval stages. A large jump emits
+every due stage in order and waits for explicit approval. Plugin events carry stable status
+keys and numeric progress; snapshots carry only semantic indicators. `interrupt(_:at:)`
+explicitly declines/interupts one slot without accidentally approving or stopping other slots.
+`stop` interrupts every active slot and cancels all schedules; `start` does not resume them.
+AgentStateMachine exposes typed transition/updateProgress for host backend adapters, with
+finite, nondecreasing per-slot time validation and structured errors.
