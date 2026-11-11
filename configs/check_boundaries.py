@@ -10,6 +10,8 @@ allowed = {
     "SurfacePluginContracts": set(),
     "SurfacePluginConformance": {"SurfacePluginContracts"},
     "AgentPlugin": {"SurfacePluginContracts"},
+    "SimulationContracts": {"SurfacePluginContracts"},
+    "RobotPlugin": {"SurfacePluginContracts", "SimulationContracts"},
 }
 errors = []
 for path in (root / "Sources").rglob("*.swift"):

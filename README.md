@@ -51,3 +51,13 @@ explicitly declines/interupts one slot without accidentally approving or stoppin
 `stop` interrupts every active slot and cancels all schedules; `start` does not resume them.
 AgentStateMachine exposes typed transition/updateProgress for host backend adapters, with
 finite, nondecreasing per-slot time validation and structured errors.
+
+RobotPlugin and SimulationContracts provide the reference joint-chain simulator and shared
+lease/generation/proof values. Each simulator requires an explicit, host-owned unique
+`instanceID`; use a fresh host UUID per independent instance/session if no stable identity
+exists. The pure core derives deterministic generations and grant tokens within that namespace.
+The namespace is not a credential: transport authentication remains a host responsibility.
+`RobotPlugin` implements the semantic surface while its typed `simulator` exposes motion APIs.
+After a moving instance receives stop it remains started while braking, rejects new surface
+writes, and reports stopped only after advance completes braking. Legacy error codes remain;
+`docs/simulation-error-mapping.md` records key-to-message compatibility translations for hosts.
