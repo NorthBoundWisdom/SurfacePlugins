@@ -2,7 +2,7 @@ import Foundation
 import SurfacePluginContracts
 
 /// Entry-path policy only; it is not a substitute for the host's identity checks.
-public enum AgentApprovalPolicy: String, Codable, Sendable { case anyOrigin, interfaceOnly }
+public enum AgentApprovalPolicy: String, Codable, Sendable { case anyOrigin, localOrigins, interfaceOnly }
 
 public struct AgentPlugin: ControlPlugin {
     public static let pluginID: PluginID = "agent"
@@ -97,7 +97,7 @@ public struct AgentPlugin: ControlPlugin {
                 events.append(event(try machine.transition(id, to: .interrupted, statusKey: "agent.interrupted", at: time)))
                 timelines[id] = nil
             case .waitingApproval:
-                guard approvalPolicy != .interfaceOnly || origin == .interface else {
+                guard (approvalPolicy != .interfaceOnly || origin == .interface) && (approvalPolicy != .localOrigins || origin != .remote) else {
                     throw PluginError(code: .permissionDenied, fields: ["requiredOrigin": .string(InputOrigin.interface.rawValue)])
                 }
                 events.append(event(try machine.transition(id, to: .running, progress: 0.64, statusKey: "agent.mock.approved", at: time)))

@@ -69,3 +69,10 @@ ExampleParameterSets is an independent opt-in data product. Output differences a
 conservative changes are recorded in docs/output-differences.md. Time is monotonic Double,
 JSON sessions are supplied by hosts, and OSC prefixes are explicit adapter configuration.
 Heartbeat and actual-state delivery are trusted host APIs, never unauthenticated remote tools.
+
+RemoteToolContracts and the independent AgentRemoteBinding / RobotRemoteBinding /
+ChassisRemoteBinding / OutputRemoteBinding products provide one shared strict tool catalog
+and implementation for both hosts. See docs/remote-tools.md for operation schemas, ownership,
+trusted context, event gaps, and response-loss recovery. Registry owns the sole mutable value;
+clock, hardware and remote entry paths use that same instance. Agent localOrigins policy keeps
+hardware/UI approval available while rejecting remote approval.
