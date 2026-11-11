@@ -62,3 +62,32 @@ final class HeartbeatGapTests: XCTestCase {
         }
     }
 }
+
+final class DecisionParameterTests: XCTestCase {
+    func testEachParameterFailureCarriesItsID() throws {
+        for expected in [MotionGateStatus.waitingActual, .actualOutOfLimits, .invalidTarget] {
+            var gate = try MotionSafetyGate(limits: [
+                .init(id: "first", minimum: -1, maximum: 1, maximumChange: 1, maximumVelocity: 1),
+                .init(id: "affected", minimum: -1, maximum: 1, maximumChange: 1, maximumVelocity: 1)
+            ])
+            gate.setConnected(true, at: 0); gate.receiveHeartbeat(at: 0)
+            gate.receiveActual([.init(id: "first", value: 0, receivedAt: 0)])
+            if expected != .waitingActual {
+                gate.receiveActual([.init(id: "affected", value: expected == .actualOutOfLimits ? 2 : 0, receivedAt: 0)])
+            }
+            let disabled = gate.evaluate(targets: [:], enabled: false, at: 0)
+            XCTAssertNil(disabled.parameterID)
+            let targets: [ParameterID: Double] = expected == .invalidTarget ? ["first": 0] : ["first": 0, "affected": 0]
+            let decision = gate.evaluate(targets: targets, enabled: true, at: 0)
+            XCTAssertEqual(decision.status, expected)
+            XCTAssertEqual(decision.parameterID, "affected")
+            let reason = expected == .waitingActual ? "output.reason.011" : expected == .actualOutOfLimits ? "output.reason.012" : "output.reason.013"
+            XCTAssertEqual(decision.reason, reason)
+        }
+    }
+    func testPublicDecisionInitializerDefaultsToNoParameter() {
+        let decision = MotionSafetyDecision(status: .disabled, reason: "output.reason.010", command: nil, limited: false)
+        XCTAssertNil(decision.parameterID)
+        XCTAssertEqual(MotionSafetyDecision(status: .invalidTarget, reason: "output.reason.013", command: nil, limited: false, parameterID: "affected").parameterID, "affected")
+    }
+}

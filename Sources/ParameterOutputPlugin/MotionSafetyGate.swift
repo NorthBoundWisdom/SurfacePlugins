@@ -44,6 +44,12 @@ public struct MotionSafetyDecision: Equatable, Sendable {
     public let reason: String
     public let command: ParameterOutputFrame?
     public let limited: Bool
+    public let parameterID: ParameterID?
+    public init(status: MotionGateStatus, reason: String, command: ParameterOutputFrame?, limited: Bool,
+                parameterID: ParameterID? = nil) {
+        self.status = status; self.reason = reason; self.command = command
+        self.limited = limited; self.parameterID = parameterID
+    }
 }
 
 /// Clock-injected safety state; no network or UI. Only returned commands may reach a sink.
@@ -119,12 +125,12 @@ public struct MotionSafetyGate: Sendable {
         }
         let elapsed = lastStep.map { (now - $0) } ?? 0
         lastStep = now
-        func stopped(_ state: MotionGateStatus, _ reason: String) -> MotionSafetyDecision {
+        func stopped(_ state: MotionGateStatus, _ reason: String, parameterID: ParameterID? = nil) -> MotionSafetyDecision {
             MotionSafetyDecision(status: state, reason: reason,
                                  command: previous == .ready || (connected && heartbeat != nil) ? ParameterOutputFrame(
                                      enabled: false,
                                      values: [:]
-                                 ) : nil, limited: false)
+                                 ) : nil, limited: false, parameterID: parameterID)
         }
         if elapsed < 0 { fault = "output.reason.004"; faultStatus = .clockError }
         let closed: MotionSafetyDecision?
@@ -151,17 +157,17 @@ public struct MotionSafetyGate: Sendable {
             guard let sample = actual[limit.id], (now - sample.receivedAt) >= 0,
                   (now - sample.receivedAt) < heartbeatTimeout
             else {
-                let result = stopped(.waitingActual, "output.reason.011")
+                let result = stopped(.waitingActual, "output.reason.011", parameterID: limit.id)
                 armed = false; observedDisabled = false
                 status = result.status; return result
             }
             guard sample.value >= limit.minimum, sample.value <= limit.maximum else {
-                let result = stopped(.actualOutOfLimits, "output.reason.012")
+                let result = stopped(.actualOutOfLimits, "output.reason.012", parameterID: limit.id)
                 armed = false; observedDisabled = false
                 status = result.status; return result
             }
             guard let target = targets[limit.id], target.isFinite else {
-                let result = stopped(.invalidTarget, "output.reason.013")
+                let result = stopped(.invalidTarget, "output.reason.013", parameterID: limit.id)
                 armed = false; observedDisabled = false
                 status = result.status; return result
             }
