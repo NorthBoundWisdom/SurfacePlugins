@@ -71,3 +71,9 @@ renew/release/move/drive/reset/stop reject with stopped. Snapshot and trace rema
 explicit simulation advance can finish braking and cannot restart the plugin. Both remote and
 surface stepping update the same lifecycle completion state. A host restart is explicit and
 does not restore old ownership or resume motion.
+
+Robot/chassis surface updates emit a stable `<plugin>.simulation.updated` event whenever the
+simulation control revision changes, including continuous active motion and hidden control
+revocation/braking. Event fields contain revision and simulated_time_s, never proof/token.
+Zero-time surface steps and completed-stop idle ticks emit no simulation event. This lets the
+shared registry expose clock-driven actual changes even when semantic indicators stay active.

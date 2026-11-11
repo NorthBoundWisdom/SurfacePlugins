@@ -292,3 +292,68 @@ final class RemoteLifecycleGateTests: XCTestCase {
         }
     }
 }
+
+final class SimulationEventVisibilityTests: XCTestCase {
+    func testContinuousMotionAndHiddenStopPublishEvents() throws {
+        for domain in ["robot", "chassis"] {
+            var registry = try RemoteRegistry(epoch: "fixture")
+            if domain == "robot" {
+                var plugin = try RobotPlugin(instanceID: domain)
+                _ = try plugin.handle(.start, at: 0)
+                try plugin.simulator.initialize([0,0,0,0,0,0], generation: plugin.simulator.control.generation)
+                let g = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "fixture", ttl: 5, controlToken: "opaque")
+                try plugin.simulator.enable(.init(generation: g.generation, token: g.control_token, sequence: 1))
+                try plugin.simulator.move(.init(generation: g.generation, token: g.control_token, sequence: 2), target: [1,0,0,0,0,0], duration: 1.5, validFor: 2)
+                try registry.install(RobotRemoteBinding(instanceID: domain, plugin: plugin))
+            } else {
+                var plugin = try ChassisPlugin(instanceID: domain)
+                _ = try plugin.handle(.start, at: 0)
+                try plugin.simulator.initialize([0,0,0], generation: plugin.simulator.control.generation)
+                let g = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "fixture", ttl: 5, controlToken: "opaque")
+                try plugin.simulator.enable(.init(generation: g.generation, token: g.control_token, sequence: 1))
+                try plugin.simulator.drive(.init(generation: g.generation, token: g.control_token, sequence: 2), speed: 0.8, steering: 0.3, validFor: 2)
+                try registry.install(ChassisRemoteBinding(instanceID: domain, plugin: plugin))
+            }
+            let request: JSONValue = .object(["epoch": .string("fixture"), "after": .string("0"), "limit": .number(128)])
+            let stateArgs: JSONValue = .object(["instance_id": .string(domain)])
+            let initial = try registry.call("surface_"+domain+"_snapshot", arguments: stateArgs, context: .init(time: 0))
+            let first = try registry.handle(instanceID: domain, input: .advance, at: 0.1)
+            let actual1 = try registry.call("surface_"+domain+"_snapshot", arguments: stateArgs, context: .init(time: 0.1))
+            let second = try registry.handle(instanceID: domain, input: .advance, at: 0.2)
+            let actual2 = try registry.call("surface_"+domain+"_snapshot", arguments: stateArgs, context: .init(time: 0.2))
+            XCTAssertNotEqual(initial.objectValue?["actual"], actual1.objectValue?["actual"])
+            XCTAssertNotEqual(actual1.objectValue?["actual"], actual2.objectValue?["actual"])
+            XCTAssertEqual(first.indicators, second.indicators)
+            XCTAssertEqual(first.events.count, 1); XCTAssertEqual(second.events.count, 1)
+            let stopped = try registry.handle(instanceID: domain, input: .invoke(.init(pluginID: .init(rawValue: domain), actionID: .init(rawValue: domain+".stop")), origin: .hardware), at: 0.2)
+            XCTAssertEqual(stopped.indicators, second.indicators)
+            XCTAssertEqual(stopped.events.count, 1)
+            let page = try registry.call("surface_events", arguments: request, context: .init(time: 0.2))
+            XCTAssertEqual(page.objectValue?["events"]?.arrayValue?.count, 3)
+            _ = try registry.call("surface_"+domain+"_snapshot", arguments: stateArgs, context: .init(time: 999))
+            XCTAssertEqual(try registry.call("surface_events", arguments: request, context: .init(time: 0.2)), page)
+            XCTAssertTrue(try registry.handle(instanceID: domain, input: .advance, at: 0.2).events.isEmpty)
+            _ = try registry.handle(instanceID: domain, input: .stop, at: 0.2)
+            _ = try registry.handle(instanceID: domain, input: .advance, at: 2)
+            let settled = try registry.call("surface_events", arguments: request, context: .init(time: 2))
+            XCTAssertTrue(try registry.handle(instanceID: domain, input: .advance, at: 3).events.isEmpty)
+            XCTAssertEqual(try registry.call("surface_events", arguments: request, context: .init(time: 3)), settled)
+        }
+    }
+    func testApprovalErrorReportsAllowedLocalOrigins() throws {
+        for policy in [AgentApprovalPolicy.localOrigins, .interfaceOnly] {
+            var plugin = try AgentPlugin(slotCount: 1, approvalPolicy: policy)
+            _ = try plugin.handle(.start, at: 0)
+            let action = ActionReference(pluginID: "agent", actionID: "agent.primary", index: 1)
+            _ = try plugin.handle(.invoke(action, origin: .interface), at: 0)
+            _ = try plugin.handle(.advance, at: 3)
+            XCTAssertThrowsError(try plugin.handle(.invoke(action, origin: .remote), at: 4)) { error in
+                let fields = (error as? PluginError)?.fields
+                if policy == .localOrigins {
+                    XCTAssertEqual(fields?["allowedOrigins"], .array([.string("hardware"),.string("interface")]))
+                    XCTAssertNil(fields?["requiredOrigin"])
+                } else { XCTAssertEqual(fields?["requiredOrigin"], .string("interface")) }
+            }
+        }
+    }
+}

@@ -30,6 +30,7 @@ public struct ChassisPlugin: ControlPlugin {
     }
     public mutating func handle(_ input: PluginInput, at time: PluginTime) throws -> PluginUpdate {
         guard time.isFinite, lastTime.map({ time >= $0 }) ?? true else { throw PluginError(code: .invalidTime) }
+        let previousRevision = simulator.control.revision
         var next = self
         switch input {
         case .start:
@@ -58,6 +59,11 @@ public struct ChassisPlugin: ControlPlugin {
             throw PluginError(code: .invalidParameter)
         }
         next.lastTime = time; self = next
-        return .init(indicators: snapshot().indicators)
+        let events: [PluginEvent] = simulator.control.revision == previousRevision ? [] : [
+            .init(code: "chassis.simulation.updated", fields: [
+                "revision": .string(String(simulator.control.revision)), "simulated_time_s": .double(simulator.control.time)
+            ])
+        ]
+        return .init(indicators: snapshot().indicators, events: events)
     }
 }

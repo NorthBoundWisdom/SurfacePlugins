@@ -98,7 +98,10 @@ public struct AgentPlugin: ControlPlugin {
                 timelines[id] = nil
             case .waitingApproval:
                 guard (approvalPolicy != .interfaceOnly || origin == .interface) && (approvalPolicy != .localOrigins || origin != .remote) else {
-                    throw PluginError(code: .permissionDenied, fields: ["requiredOrigin": .string(InputOrigin.interface.rawValue)])
+                    let fields: [String: JSONValue] = approvalPolicy == .localOrigins
+                        ? ["allowedOrigins": .array([.string(InputOrigin.hardware.rawValue), .string(InputOrigin.interface.rawValue)])]
+                        : ["requiredOrigin": .string(InputOrigin.interface.rawValue)]
+                    throw PluginError(code: .permissionDenied, fields: fields)
                 }
                 events.append(event(try machine.transition(id, to: .running, progress: 0.64, statusKey: "agent.mock.approved", at: time)))
                 timelines[id] = .init(anchor: time, stages: Self.approvedStages)
