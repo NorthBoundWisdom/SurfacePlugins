@@ -13,6 +13,8 @@ allowed = {
     "SimulationContracts": {"SurfacePluginContracts"},
     "RobotPlugin": {"SurfacePluginContracts", "SimulationContracts"},
     "ChassisPlugin": {"SurfacePluginContracts", "SimulationContracts"},
+    "ParameterOutputPlugin": {"SurfacePluginContracts"},
+    "ExampleParameterSets": {"SurfacePluginContracts"},
 }
 errors = []
 for path in (root / "Sources").rglob("*.swift"):

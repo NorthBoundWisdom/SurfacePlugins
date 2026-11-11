@@ -63,3 +63,9 @@ The namespace is not a credential: transport authentication remains a host respo
 After a moving instance receives stop it remains started while braking, rejects new surface
 writes, and reports stopped only after advance completes braking. Legacy error codes remain;
 `docs/simulation-error-mapping.md` records key-to-message compatibility translations for hosts.
+
+ParameterOutputPlugin provides the shared MotionSafetyGate, OSCCodec and JSONParameterLink;
+ExampleParameterSets is an independent opt-in data product. Output differences and intentional
+conservative changes are recorded in docs/output-differences.md. Time is monotonic Double,
+JSON sessions are supplied by hosts, and OSC prefixes are explicit adapter configuration.
+Heartbeat and actual-state delivery are trusted host APIs, never unauthenticated remote tools.
