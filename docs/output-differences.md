@@ -20,3 +20,11 @@ migration protection remain host responsibilities. No device control bindings ar
 A late or equal-timeout heartbeat resets arming even if it arrives before evaluation. Fresh
 actual and heartbeat may be stored, but cannot erase the outage: evaluate remains waitingRearm
 until the host observes disabled then enabled. This intentionally strengthens the old full gate.
+
+For float32 output, initial/rearm seeding now requires an actual value exactly representable on
+the Float wire. A finite Double such as 0.1 cannot be rounded during the zero-movement seed;
+it returns invalidActual with the affected parameter and output.actual_not_float32_representable,
+produces only a stop frame, and requires fresh representable actual plus explicit off/on recovery.
+Already-ready representable output is not reseeded by unrelated Double actual; normal bounded
+quantization continues. Double output behavior is unchanged. Hosts choose float32 for Float
+transports and double for JSON transports; no epsilon or invented observation is introduced.

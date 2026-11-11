@@ -41,3 +41,8 @@
 | `output.reason.037` | 禁止在停止帧中发送运动值 |
 | `output.reason.038` | 参数值必须是有限数值 |
 | `output.reason.039` | 实际回传包含未知参数或非法数值 |
+
+New safety reason (no legacy equivalent): `output.actual_not_float32_representable` means the
+finite initial/rearm actual cannot be sent exactly on a Float wire with zero permitted movement.
+Use the decision.parameterID in the host's translated precision/rearm guidance. This is distinct
+from a nonfinite observation, and does not reject Double-precision output.

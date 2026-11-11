@@ -171,6 +171,16 @@ public struct MotionSafetyGate: Sendable {
                 armed = false; observedDisabled = false
                 status = result.status; return result
             }
+            // Re-arming has zero permitted movement. Seed only an exact wire value;
+            // rounding actual here would invent a movement before velocity limiting begins.
+            if precision == .float32, previous != .ready {
+                let wire = Float(sample.value)
+                guard wire.isFinite, Double(wire) == sample.value else {
+                    let result = stopped(.invalidActual, "output.actual_not_float32_representable", parameterID: limit.id)
+                    armed = false; observedDisabled = false
+                    status = result.status; return result
+                }
+            }
         }
         if !armed {
             guard observedDisabled else {
