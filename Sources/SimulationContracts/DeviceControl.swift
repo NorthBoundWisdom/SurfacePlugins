@@ -6,7 +6,7 @@ public struct DeviceControl: Sendable {
     public private(set) var generation: String
     private let namespace: String
     private var generationCounter: UInt64 = 0
-    private var grantCounter: UInt64 = 0
+    private var usedTokens: Set<String> = []
     public private(set) var revision: UInt64 = 0
     public private(set) var time: Double = 0
     public private(set) var initialized = false
@@ -32,7 +32,7 @@ public struct DeviceControl: Sendable {
         owner = nil; expires = nil; token = nil; lastCommandSequence = 0; changed()
     }
 
-    public mutating func acquire(expectedGeneration: String, owner: String, ttl: Double) throws -> DeviceControlGrant {
+    public mutating func acquire(expectedGeneration: String, owner: String, ttl: Double, controlToken: String) throws -> DeviceControlGrant {
         try checkGeneration(expectedGeneration)
         try SimulationValidation.require(initialized, "not_initialized", "simulation.initialize_the_device_first")
         try SimulationValidation.require(fault == nil, "faulted", "simulation.the_device_has_a_fault")
@@ -47,8 +47,9 @@ public struct DeviceControl: Sendable {
             "simulation.control_ttl_must_be_within_0_1_5_seconds"
         )
         try SimulationValidation.require(token == nil, "busy", "simulation.control_is_already_owned")
-        grantCounter &+= 1
-        let value = namespace + ".grant.\(grantCounter)"
+        try SimulationValidation.require(!controlToken.isEmpty && controlToken.utf8.count <= 512 && !usedTokens.contains(controlToken), "invalid_argument", "simulation.invalid_control_token")
+        let value = controlToken
+        usedTokens.insert(value)
         self.owner = owner; expires = time + ttl; token = value; lastCommandSequence = 0; changed()
         return DeviceControlGrant(generation: generation, token: value, expires: time + ttl)
     }
@@ -103,7 +104,7 @@ public struct DeviceControl: Sendable {
         try SimulationValidation.require(
             dt.isFinite && dt > 0 && dt <= 0.1,
             "invalid_argument",
-            "Advance must be within (0, 0.1] seconds"
+            "simulation.advance_must_be_within_0_0_1_seconds"
         )
         let next = time + dt
         try SimulationValidation.require(

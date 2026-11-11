@@ -55,7 +55,9 @@ finite, nondecreasing per-slot time validation and structured errors.
 RobotPlugin and SimulationContracts provide the reference joint-chain simulator and shared
 lease/generation/proof values. Each simulator requires an explicit, host-owned unique
 `instanceID`; use a fresh host UUID per independent instance/session if no stable identity
-exists. The pure core derives deterministic generations and grant tokens within that namespace.
+exists. The pure core derives deterministic generations within that namespace. Each acquire requires
+a fresh opaque `controlToken` supplied by the trusted host (for example a new host UUID),
+never by a remote request. Tokens cannot be reused within the same instance.
 The namespace is not a credential: transport authentication remains a host responsibility.
 `RobotPlugin` implements the semantic surface while its typed `simulator` exposes motion APIs.
 After a moving instance receives stop it remains started while braking, rejects new surface

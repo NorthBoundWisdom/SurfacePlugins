@@ -13,7 +13,7 @@ final class ChassisTests: XCTestCase {
     func robot() throws -> (RobotSimulator, DeviceControlGrant) {
         var robot = try RobotSimulator(instanceID: "robot")
         try robot.initialize(Array(repeating: 0, count: 6), generation: robot.control.generation)
-        let grant = try robot.acquire(generation: robot.control.generation, owner: "fixture", ttl: 5)
+        let grant = try robot.acquire(generation: robot.control.generation, owner: "fixture", ttl: 5, controlToken: "fixture-secret")
         try robot.enable(proof(grant, 1))
         return (robot, grant)
     }
@@ -21,7 +21,7 @@ final class ChassisTests: XCTestCase {
     func chassis() throws -> (ChassisSimulator, DeviceControlGrant) {
         var chassis = try ChassisSimulator(instanceID: "chassis")
         try chassis.initialize([0, 0, 0], generation: chassis.control.generation)
-        let grant = try chassis.acquire(generation: chassis.control.generation, owner: "fixture", ttl: 5)
+        let grant = try chassis.acquire(generation: chassis.control.generation, owner: "fixture", ttl: 5, controlToken: "fixture-secret")
         try chassis.enable(proof(grant, 1))
         return (chassis, grant)
     }
@@ -74,7 +74,7 @@ final class ChassisTests: XCTestCase {
     func testExpiredLeaseStopsAndRejectsOldControl() throws {
         var chassis = try ChassisSimulator(instanceID: "chassis")
         try chassis.initialize([0, 0, 0], generation: chassis.control.generation)
-        let grant = try chassis.acquire(generation: chassis.control.generation, owner: "fixture", ttl: 0.2)
+        let grant = try chassis.acquire(generation: chassis.control.generation, owner: "fixture", ttl: 0.2, controlToken: "fixture-secret")
         try chassis.enable(proof(grant, 1))
         try chassis.drive(proof(grant, 2), speed: 0.5, steering: 0, validFor: 0.2)
         for _ in 0 ..< 6 { try chassis.advance(0.1) }
@@ -137,7 +137,7 @@ final class ChassisTests: XCTestCase {
         try chassis.advance(0.1)
         let angleAtExpiry = try XCTUnwrap(chassis.snapshot().actual).steering_angle_rad
         XCTAssertFalse(chassis.control.enabled)
-        let next = try chassis.acquire(generation: chassis.control.generation, owner: "next-owner", ttl: 2)
+        let next = try chassis.acquire(generation: chassis.control.generation, owner: "next-owner", ttl: 2, controlToken: "new-secret")
         XCTAssertThrowsError(try chassis.enable(proof(next, 1))) { XCTAssertEqual(
             ($0 as? SimulationError)?.code,
             "busy"
@@ -159,7 +159,7 @@ final class ChassisContractTests: XCTestCase {
     func testSameTypeInstancesCannotUseForeignProof() throws {
         var a = try ChassisSimulator(instanceID: "a"), b = try ChassisSimulator(instanceID: "b")
         try a.initialize([0,0,0], generation: a.control.generation); try b.initialize([0,0,0], generation: b.control.generation)
-        let grant = try a.acquire(generation: a.control.generation, owner: "fixture", ttl: 1)
+        let grant = try a.acquire(generation: a.control.generation, owner: "fixture", ttl: 1, controlToken: "fixture-secret")
         XCTAssertThrowsError(try b.enable(.init(generation: grant.generation, token: grant.control_token, sequence: 1)))
         let before = try JSONValue.encoded(b.snapshot())
         try a.reset(generation: a.control.generation)
@@ -169,7 +169,7 @@ final class ChassisContractTests: XCTestCase {
         var p = try ChassisPlugin(instanceID: "fixture")
         _ = try p.handle(.start, at: 0)
         try p.simulator.initialize([0,0,0], generation: p.simulator.control.generation)
-        let g = try p.simulator.acquire(generation: p.simulator.control.generation, owner: "fixture", ttl: 5)
+        let g = try p.simulator.acquire(generation: p.simulator.control.generation, owner: "fixture", ttl: 5, controlToken: "fixture-secret")
         try p.simulator.enable(.init(generation: g.generation, token: g.control_token, sequence: 1))
         try p.simulator.drive(.init(generation: g.generation, token: g.control_token, sequence: 2), speed: 0.8, steering: 0.3, validFor: 2)
         _ = try p.handle(.advance, at: 0.5); _ = try p.handle(.stop, at: 0.5)

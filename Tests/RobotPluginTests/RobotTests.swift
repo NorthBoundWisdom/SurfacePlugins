@@ -13,7 +13,7 @@ final class RobotTests: XCTestCase {
     func robot() throws -> (RobotSimulator, DeviceControlGrant) {
         var robot = try RobotSimulator(instanceID: "fixture")
         try robot.initialize(Array(repeating: 0, count: 6), generation: robot.control.generation)
-        let grant = try robot.acquire(generation: robot.control.generation, owner: "fixture", ttl: 5)
+        let grant = try robot.acquire(generation: robot.control.generation, owner: "fixture", ttl: 5, controlToken: "fixture-secret")
         try robot.enable(proof(grant, 1))
         return (robot, grant)
     }
@@ -23,7 +23,7 @@ final class RobotTests: XCTestCase {
         XCTAssertNil(robot.snapshot().actual)
         XCTAssertFalse(robot.snapshot().stopped)
         XCTAssertEqual(robot.snapshot().metadata.source, .simulation)
-        XCTAssertThrowsError(try robot.acquire(generation: robot.control.generation, owner: "x", ttl: 1))
+        XCTAssertThrowsError(try robot.acquire(generation: robot.control.generation, owner: "x", ttl: 1, controlToken: "fixture-secret"))
         XCTAssertNil(robot.snapshot().actual)
     }
 
@@ -98,8 +98,8 @@ final class RobotContractTests: XCTestCase {
     func testDeterministicControlAndNamespaceIsolation() throws {
         var a = DeviceControl(namespace: "a"), b = DeviceControl(namespace: "b")
         try a.initialize(expectedGeneration: a.generation); try b.initialize(expectedGeneration: b.generation)
-        let grant = try a.acquire(expectedGeneration: a.generation, owner: "fixture", ttl: 1)
-        try b.acquire(expectedGeneration: b.generation, owner: "fixture", ttl: 1)
+        let grant = try a.acquire(expectedGeneration: a.generation, owner: "fixture", ttl: 1, controlToken: "fixture-secret")
+        try b.acquire(expectedGeneration: b.generation, owner: "fixture", ttl: 1, controlToken: "fixture-secret")
         XCTAssertThrowsError(try b.enable(.init(generation: grant.generation, token: grant.control_token, sequence: 1)))
         let old = a.generation
         try a.reset(expectedGeneration: old)
@@ -109,7 +109,7 @@ final class RobotContractTests: XCTestCase {
         var plugin = try RobotPlugin(instanceID: "fixture")
         _ = try plugin.handle(.start, at: 0)
         try plugin.simulator.initialize([0,0,0,0,0,0], generation: plugin.simulator.control.generation)
-        let grant = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "fixture", ttl: 5)
+        let grant = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "fixture", ttl: 5, controlToken: "fixture-secret")
         try plugin.simulator.enable(.init(generation: grant.generation, token: grant.control_token, sequence: 1))
         try plugin.simulator.move(.init(generation: grant.generation, token: grant.control_token, sequence: 2), target: [1,0,0,0,0,0], duration: 1.5, validFor: 2)
         _ = try plugin.handle(.advance, at: 0.7); _ = try plugin.handle(.stop, at: 0.7)
@@ -118,5 +118,21 @@ final class RobotContractTests: XCTestCase {
         _ = try plugin.handle(.advance, at: 2)
         XCTAssertFalse(plugin.snapshot().isStarted)
         XCTAssertTrue(plugin.simulator.snapshot().stopped)
+    }
+}
+
+final class GrantSecurityTests: XCTestCase {
+    func testReacquireNeedsFreshHostSecretAndOldProofFails() throws {
+        var c = DeviceControl(namespace: "visible-instance")
+        try c.initialize(expectedGeneration: c.generation)
+        let a = try c.acquire(expectedGeneration: c.generation, owner: "one", ttl: 1, controlToken: "opaque-host-first")
+        try c.release(.init(generation: a.generation, token: a.control_token, sequence: 1))
+        XCTAssertThrowsError(try c.acquire(expectedGeneration: c.generation, owner: "two", ttl: 1, controlToken: a.control_token))
+        let b = try c.acquire(expectedGeneration: c.generation, owner: "two", ttl: 1, controlToken: "opaque-host-next")
+        XCTAssertNotEqual(a.control_token, b.control_token)
+        XCTAssertThrowsError(try c.enable(.init(generation: b.generation, token: a.control_token, sequence: 2)))
+        let metadata = try JSONValue.encoded(c.metadata(device: "device", model: "model", state: "idle", frame: "frame"))
+        XCTAssertFalse(try metadata.jsonText.contains(b.control_token))
+        XCTAssertThrowsError(try c.enable(.init(generation: b.generation, token: "visible-instance.grant.2", sequence: 2)))
     }
 }

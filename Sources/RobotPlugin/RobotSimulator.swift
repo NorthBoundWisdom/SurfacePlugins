@@ -133,8 +133,8 @@ public struct RobotSimulator: Sendable {
         trace.removeAll(); dropped = 0; record()
     }
 
-    public mutating func acquire(generation: String, owner: String, ttl: Double) throws -> DeviceControlGrant {
-        try control.acquire(expectedGeneration: generation, owner: owner, ttl: ttl)
+    public mutating func acquire(generation: String, owner: String, ttl: Double, controlToken: String) throws -> DeviceControlGrant {
+        try control.acquire(expectedGeneration: generation, owner: owner, ttl: ttl, controlToken: controlToken)
     }
 
     public mutating func enable(_ proof: DeviceCommandProof) throws {

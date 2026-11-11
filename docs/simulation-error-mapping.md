@@ -42,3 +42,5 @@
 | `simulation.drive_must_fit_the_control_validity_window` | Drive must fit the control validity window |
 | `simulation.invalid_chassis_time_step` | Invalid chassis time step |
 | `simulation.simulation_boundary_cannot_advance` | Simulation boundary cannot advance |
+| `simulation.advance_must_be_within_0_0_1_seconds` | Advance must be within (0, 0.1] seconds |
+| `simulation.invalid_control_token` | Invalid control token |
