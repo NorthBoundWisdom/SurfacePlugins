@@ -96,16 +96,16 @@ public struct RemoteRegistry: Sendable {
     }
     public mutating func install(_ binding: any RemoteBinding) throws {
         guard !binding.instanceID.isEmpty, bindings[binding.instanceID] == nil else { throw PluginError(code: .invalidParameter) }
-        guard binding.manifest.contractVersion == "1.0", !binding.manifest.id.rawValue.isEmpty else { throw PluginError(code: .unsupported) }
+        guard binding.manifest.contractVersion == "1.0", Self.validIdentifier(binding.manifest.id.rawValue) else { throw PluginError(code: .unsupported) }
         let ids = binding.surface.parameters.map { $0.id.rawValue } + binding.surface.actions.map { $0.id.rawValue } + binding.surface.indicators.map { $0.id.rawValue }
         let prefix = binding.manifest.id.rawValue + "."
-        guard Set(ids).count == ids.count, ids.allSatisfy({ $0.hasPrefix(prefix) && $0.count > prefix.count }),
+        guard Set(ids).count == ids.count, ids.allSatisfy({ $0.hasPrefix(prefix) && $0.count > prefix.count && Self.validIdentifier($0) }),
               binding.surface.parameters.allSatisfy({ !$0.nameKey.isEmpty }),
               binding.surface.actions.allSatisfy({ !$0.nameKey.isEmpty && ($0.indexCount.map { $0 > 0 } ?? true) }),
               binding.surface.indicators.allSatisfy({ !$0.nameKey.isEmpty }) else { throw PluginError(code: .invalidParameter) }
         for old in bindings.values {
             if old.manifest.id == binding.manifest.id {
-                guard old.manifest == binding.manifest, old.surface == binding.surface, old.tools == binding.tools, old.surface == binding.surface else { throw PluginError(code: .invalidParameter) }
+                guard old.manifest == binding.manifest, old.surface == binding.surface, old.tools == binding.tools else { throw PluginError(code: .invalidParameter) }
             } else {
                 let occupied = old.surface.parameters.map { $0.id.rawValue } + old.surface.actions.map { $0.id.rawValue } + old.surface.indicators.map { $0.id.rawValue }
                 guard Set(occupied).isDisjoint(with: ids) else { throw PluginError(code: .invalidParameter) }
@@ -119,10 +119,33 @@ public struct RemoteRegistry: Sendable {
               }) else { throw PluginError(code: .invalidParameter) }
         bindings[binding.instanceID] = binding
     }
-    /// Explicit host synchronization after trusted device input or local UI mutation.
-    public mutating func replace(_ binding: any RemoteBinding) throws {
+    /// Identifier grammar shared by host registration and plugin declarations.
+    public static func validIdentifier(_ value: String) -> Bool {
+        let parts = value.split(separator: ".", omittingEmptySubsequences: false)
+        guard let first = parts.first?.utf8.first, (97...122).contains(first) else { return false }
+        return parts.allSatisfy { part in
+            !part.isEmpty && part.utf8.allSatisfy { (97...122).contains($0) || (48...57).contains($0) || $0 == 95 || $0 == 45 }
+        }
+    }
+    private func validateReplacement(_ binding: any RemoteBinding) throws {
         guard let old = bindings[binding.instanceID], old.manifest == binding.manifest, old.tools == binding.tools, old.surface == binding.surface else { throw PluginError(code: .generationMismatch) }
+    }
+    /// Metadata-only synchronization; never use this overload for production state mutation.
+    /// Visible state changes require the event-bearing overload, including trusted typed commands.
+    public mutating func replace(_ binding: any RemoteBinding) throws {
+        try validateReplacement(binding)
+        guard bindings[binding.instanceID]?.snapshot() == binding.snapshot() else { throw PluginError(code: .invalidParameter) }
         bindings[binding.instanceID] = binding
+    }
+    /// Atomically commit one trusted typed operation and its observable event.
+    /// Event fields must never include tokens, credentials, or command proofs.
+    public mutating func replace(_ binding: any RemoteBinding, at time: PluginTime, event: PluginEvent) throws {
+        try validateReplacement(binding)
+        guard !event.code.isEmpty else { throw PluginError(code: .invalidParameter) }
+        _ = try JSONEncoder().encode(event)
+        var nextJournal = journal
+        try nextJournal.append(instanceID: binding.instanceID, event: event, at: time)
+        journal = nextJournal; bindings[binding.instanceID] = binding
     }
     public func binding<P: RemoteBinding>(_ id: String, as type: P.Type) -> P? { bindings[id] as? P }
     public mutating func handle(instanceID: String, input: PluginInput, at time: PluginTime) throws -> PluginUpdate {

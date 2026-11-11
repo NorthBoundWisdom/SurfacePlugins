@@ -11,6 +11,13 @@ public struct AckermannModel: Codable, Sendable {
     public let maximum_acceleration_m_s2: Double
     public let maximum_steering_rad: Double
     public let maximum_steering_rate_rad_s: Double
+    public init(id: String, wheelbase_m: Double, track_m: Double, wheel_radius_m: Double,
+                maximum_speed_m_s: Double, maximum_acceleration_m_s2: Double,
+                maximum_steering_rad: Double, maximum_steering_rate_rad_s: Double) {
+        self.id = id; self.wheelbase_m = wheelbase_m; self.track_m = track_m; self.wheel_radius_m = wheel_radius_m
+        self.maximum_speed_m_s = maximum_speed_m_s; self.maximum_acceleration_m_s2 = maximum_acceleration_m_s2
+        self.maximum_steering_rad = maximum_steering_rad; self.maximum_steering_rate_rad_s = maximum_steering_rate_rad_s
+    }
     public static var reference: AckermannModel {
         AckermannModel(id: "reference-ackermann-v1", wheelbase_m: 1, track_m: 0.6, wheel_radius_m: 0.1,
                        maximum_speed_m_s: 1, maximum_acceleration_m_s2: 1,

@@ -4,7 +4,7 @@ Each binding product imports only its own plugin and RemoteToolContracts. The re
 one value per instance. Hosts send clock/hardware/UI inputs through
 `registry.handle(instanceID:input:at:)`; trusted typed operations use
 `binding(id, as: AgentRemoteBinding.self)` (or Robot/Chassis/OutputRemoteBinding), mutate its
-public `plugin`, then `replace(binding)`. Never keep a second mutable plugin in a GUI model.
+public `plugin`, then `replace(binding, at: hostTime, event: PluginEvent(code: stableOperationCode))`. Never keep a second mutable plugin in a GUI model.
 Registry installation accepts one binding or an array and commits atomically. Same-plugin
 instances require identical manifest/surface/tool descriptors; all identifiers remain instance
 scoped. Different plugins cannot collide even through nested namespaces. Contract 1.0 is required.
@@ -57,8 +57,11 @@ operations and read-only calls append nothing. Events contain operation codes or
 update codes, never control proofs/tokens. surface_events returns epoch/gap/events/latestSequence.
 A cursor older than retained history, from an old epoch, or beyond the newest sequence reports
 gap. Slow readers refetch snapshots. Reading events/snapshots never advances clock or replays
-inputs. Trusted typed replace updates state explicitly; callers can use handle for event-bearing
-surface updates or their own shared journal for domain-specific typed events.
+inputs. Trusted typed replace commits canonical state and an event atomically. The overload without
+time/event is restricted to metadata-only synchronization with an unchanged visible snapshot;
+production typed mutations must always use the event-bearing overload. Failed replacement
+commits neither state nor journal. Identifier grammar is `[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)*`
+with a complete match, as provided by RemoteRegistry.validIdentifier.
 
 No retry engine is included. If a mutation response is lost, the host reports outcomeUnknown
 and clients recover from snapshot/control state; reconnect must not replay side effects.

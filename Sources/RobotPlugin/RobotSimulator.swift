@@ -11,6 +11,12 @@ public struct RobotModel: Codable, Sendable {
     public var dh_a_m: [Double]
     public var dh_d_m: [Double]
     public var dh_alpha_rad: [Double]
+    public init(id: String, minimum: [Double], maximum: [Double], maximum_speed_rad_s: Double,
+                maximum_acceleration_rad_s2: Double, dh_a_m: [Double], dh_d_m: [Double], dh_alpha_rad: [Double]) {
+        self.id = id; self.minimum = minimum; self.maximum = maximum
+        self.maximum_speed_rad_s = maximum_speed_rad_s; self.maximum_acceleration_rad_s2 = maximum_acceleration_rad_s2
+        self.dh_a_m = dh_a_m; self.dh_d_m = dh_d_m; self.dh_alpha_rad = dh_alpha_rad
+    }
     public static var reference: RobotModel {
         RobotModel(id: "reference-six-joint-v1", minimum: Array(repeating: -.pi, count: 6),
                    maximum: Array(repeating: .pi, count: 6), maximum_speed_rad_s: 2,

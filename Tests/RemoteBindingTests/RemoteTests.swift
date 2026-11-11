@@ -55,7 +55,7 @@ final class RemoteTests: XCTestCase {
         _ = try r.call("surface_agent_primary", arguments: args(["slot": .number(1)]), context: .init(time: 0))
         XCTAssertEqual(r.binding("agent", as: AgentRemoteBinding.self)?.plugin.slots[0].state, .queued)
         var replacement = try XCTUnwrap(r.binding("agent", as: AgentRemoteBinding.self))
-        _ = try replacement.plugin.interrupt(1, at: 1); try r.replace(replacement)
+        _ = try replacement.plugin.interrupt(1, at: 1); try r.replace(replacement, at: 1, event: .init(code: "local.interrupt"))
         XCTAssertEqual(r.binding("agent", as: AgentRemoteBinding.self)?.plugin.slots[0].state, .interrupted)
     }
     func testRobotAcquireUsesHostEntropyAndSnapshotNeverLeaksToken() throws {
@@ -189,5 +189,55 @@ final class IntegerPrecisionTests: XCTestCase {
         for bad in [JSONValue.double(1.5), .double(.nan), .double(.infinity)] {
             XCTAssertThrowsError(try RemoteArguments(.object(["instance_id": .string("fixture"), "sequence": bad]), tool: descriptor, instanceID: "fixture"))
         }
+    }
+}
+
+final class TrustedUpdateTests: XCTestCase {
+    func testTypedMutationAndJournalCommitTogether() throws {
+        var r = try RemoteRegistry(epoch: "fixture")
+        var p = try AgentPlugin(slotCount: 1); _ = try p.handle(.start, at: 0)
+        try r.install(AgentRemoteBinding(instanceID: "agent", plugin: p))
+        var b = try XCTUnwrap(r.binding("agent", as: AgentRemoteBinding.self))
+        _ = try b.plugin.handle(.invoke(.init(pluginID: "agent", actionID: "agent.primary", index: 1), origin: .interface), at: 1)
+        XCTAssertThrowsError(try r.replace(b))
+        try r.replace(b, at: 1, event: .init(code: "local.agent.primary"))
+        let request: JSONValue = .object(["epoch": .string("fixture"), "after": .string("0"), "limit": .number(128)])
+        let page = try r.call("surface_events", arguments: request, context: .init(time: 1))
+        XCTAssertEqual(page.objectValue?["events"]?.arrayValue?.count, 1)
+        XCTAssertEqual(page.objectValue?["events"]?.arrayValue?.first?.objectValue?["event"]?.objectValue?["code"], .string("local.agent.primary"))
+        _ = try r.call("surface_agent_snapshot", arguments: .object(["instance_id": .string("agent")]), context: .init(time: 999))
+        XCTAssertEqual(try r.call("surface_events", arguments: request, context: .init(time: 1)), page)
+        _ = try b.plugin.interrupt(1, at: 2)
+        XCTAssertThrowsError(try r.replace(b, at: .nan, event: .init(code: "local.interrupt")))
+        XCTAssertThrowsError(try r.replace(b, at: 0, event: .init(code: "local.interrupt")))
+        XCTAssertEqual(r.binding("agent", as: AgentRemoteBinding.self)?.plugin.slots[0].state, .queued)
+        XCTAssertEqual(try r.call("surface_events", arguments: request, context: .init(time: 1)), page)
+    }
+    func testIdentifierGrammarRejectsWhitespaceEmptyPartsAndTrailingNewlines() throws {
+        for id in ["", " ", "agent\n", "Agent", "agent.", "agent..primary", "agent. primary", "agent.primary\n", "agent/primary"] {
+            XCTAssertFalse(RemoteRegistry.validIdentifier(id), id)
+            var r = try RemoteRegistry(epoch: "fixture")
+            let binding = FixtureBinding(instanceID: "fixture", manifest: .init(id: .init(rawValue: id), version: "1", source: .simulation), surface: .init(), tools: [])
+            XCTAssertThrowsError(try r.install(binding), id)
+        }
+        for local in ["agent.", "agent..primary", "agent. primary", "agent.primary\n"] {
+            var r = try RemoteRegistry(epoch: "fixture")
+            let b = FixtureBinding(instanceID: "fixture", manifest: .init(id: "agent", version: "1", source: .simulation), surface: .init(actions: [.init(id: .init(rawValue: local), nameKey: "name")]), tools: [])
+            XCTAssertThrowsError(try r.install(b), local)
+        }
+        XCTAssertTrue(RemoteRegistry.validIdentifier("agent.slot.1"))
+        XCTAssertTrue(RemoteRegistry.validIdentifier("plugin-name_v1.state_2"))
+    }
+}
+
+final class PublicModelConstructorTests: XCTestCase {
+    func testCustomModelsHavePublicTypedConstructors() throws {
+        let robot = RobotModel(id: "custom", minimum: [-1], maximum: [1], maximum_speed_rad_s: 1,
+                               maximum_acceleration_rad_s2: 2, dh_a_m: [0.2], dh_d_m: [0.1], dh_alpha_rad: [0])
+        let chassis = AckermannModel(id: "custom", wheelbase_m: 2, track_m: 1, wheel_radius_m: 0.2,
+                                     maximum_speed_m_s: 2, maximum_acceleration_m_s2: 1,
+                                     maximum_steering_rad: 0.4, maximum_steering_rate_rad_s: 0.5)
+        XCTAssertEqual(try RobotSimulator(model: robot, instanceID: "robot").model.minimum, [-1])
+        XCTAssertEqual(try ChassisSimulator(model: chassis, instanceID: "chassis").model.wheelbase_m, 2)
     }
 }
