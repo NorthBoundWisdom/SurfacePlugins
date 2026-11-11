@@ -29,7 +29,7 @@ public struct ChassisRemoteBinding: RemoteBinding {
             result.append(.init(name: "surface_chassis_" + operation, fields: fields, output: output, isMutation: mutation))
         }
         add("snapshot", base, stateSchema, false)
-        add("trace", base, s.array(s.object(["source": s.string, "generation": s.string, "sequence": s.integer, "simulated_time_s": s.number, "actual": actualSchema])), false)
+        add("trace", base, s.object(["samples": s.array(s.object(["source": s.string, "generation": s.string, "sequence": s.integer, "simulated_time_s": s.number, "actual": actualSchema]))]), false)
         add("initialize", generation.merging(["pose_m_rad": s.array(s.number)]) { _,new in new }, stateSchema)
         add("acquire", generation.merging(["owner": s.string, "ttl_s": s.number]) { _,new in new }, s.grant)
         for operation in ["enable", "release", "stop"] { add(operation, controlled, stateSchema) }
@@ -57,7 +57,7 @@ public struct ChassisRemoteBinding: RemoteBinding {
         let response: JSONValue
         switch name {
         case "surface_chassis_snapshot": return try .encoded(plugin.simulator.snapshot())
-        case "surface_chassis_trace": return try .encoded(plugin.simulator.trace)
+        case "surface_chassis_trace": return .object(["samples": try .encoded(plugin.simulator.trace)])
         case "surface_chassis_initialize": try next.simulator.initialize(a.numbers("pose_m_rad"), generation: a.string("generation"))
         case "surface_chassis_acquire":
             guard let token = context.controlToken else { throw PluginError(code: .permissionDenied) }

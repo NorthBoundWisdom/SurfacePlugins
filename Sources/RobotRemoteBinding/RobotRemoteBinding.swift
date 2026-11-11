@@ -29,7 +29,7 @@ public struct RobotRemoteBinding: RemoteBinding {
             result.append(.init(name: "surface_robot_" + operation, fields: fields, output: output, isMutation: mutation))
         }
         add("snapshot", base, stateSchema, false)
-        add("trace", base, s.array(s.object(["source": s.string, "generation": s.string, "sequence": s.integer, "simulated_time_s": s.number, "actual": actualSchema])), false)
+        add("trace", base, s.object(["samples": s.array(s.object(["source": s.string, "generation": s.string, "sequence": s.integer, "simulated_time_s": s.number, "actual": actualSchema]))]), false)
         add("initialize", generation.merging(["joints_rad": s.array(s.number)]) { _,new in new }, stateSchema)
         add("acquire", generation.merging(["owner": s.string, "ttl_s": s.number]) { _,new in new }, s.grant)
         for operation in ["enable", "release", "stop"] { add(operation, controlled, stateSchema) }
@@ -57,7 +57,7 @@ public struct RobotRemoteBinding: RemoteBinding {
         let response: JSONValue
         switch name {
         case "surface_robot_snapshot": return try .encoded(plugin.simulator.snapshot())
-        case "surface_robot_trace": return try .encoded(plugin.simulator.trace)
+        case "surface_robot_trace": return .object(["samples": try .encoded(plugin.simulator.trace)])
         case "surface_robot_initialize": try next.simulator.initialize(a.numbers("joints_rad"), generation: a.string("generation"))
         case "surface_robot_acquire":
             guard let token = context.controlToken else { throw PluginError(code: .permissionDenied) }

@@ -40,7 +40,7 @@ are RemoteFailure(code, fields); simulation errors retain legacy code with reaso
 | surface_output_snapshot / surface_output_enable / surface_output_disable | none |
 
 Robot/chassis mutations return the complete typed snapshot, except acquire which returns its
-new grant. Snapshot never contains tokens; trace returns bounded simulation samples. Remote
+new grant. Snapshot never contains tokens; trace returns an object with a `samples` array of bounded simulation samples. Remote
 advance is explicit simulation stepping, not physical observation. Fault injection is not exposed.
 Agent responses contain slots with id/state/progress/status_key/last_updated. Remote primary
 uses origin.remote; localOrigins refuses remote approval while retaining hardware/UI approval.

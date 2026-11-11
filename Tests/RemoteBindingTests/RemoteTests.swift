@@ -123,7 +123,8 @@ final class DeviceRemoteLifecycleTests: XCTestCase {
             _ = try r.call(prefix+"stop", arguments: arguments(proof(4)), context: .init(time: 0))
             for _ in 0..<15 { _ = try r.call(prefix+"advance", arguments: arguments(["dt_s": .double(0.1)]), context: .init(time: 0)) }
             let trace = try r.call(prefix+"trace", arguments: arguments(), context: .init(time: 0))
-            XCTAssertFalse(trace.arrayValue?.isEmpty ?? true)
+            XCTAssertEqual(Set(try XCTUnwrap(trace.objectValue).keys), ["samples"])
+            XCTAssertFalse(trace.objectValue?["samples"]?.arrayValue?.isEmpty ?? true)
             _ = try r.call(prefix+"release", arguments: arguments(proof(5)), context: .init(time: 0))
             let reset = try r.call(prefix+"reset", arguments: arguments(["generation": gen]), context: .init(time: 0))
             XCTAssertEqual(reset.objectValue?["actual"], .null)
@@ -354,6 +355,29 @@ final class SimulationEventVisibilityTests: XCTestCase {
                     XCTAssertNil(fields?["requiredOrigin"])
                 } else { XCTAssertEqual(fields?["requiredOrigin"], .string("interface")) }
             }
+        }
+    }
+}
+
+final class ObjectOutputSchemaTests: XCTestCase {
+    func testEveryNewToolHasObjectRootSchemaAndTraceMatchesIt() throws {
+        var registry = try RemoteRegistry(epoch: "fixture")
+        try registry.install([
+            AgentRemoteBinding(instanceID: "agent", plugin: AgentPlugin()),
+            RobotRemoteBinding(instanceID: "robot", plugin: RobotPlugin(instanceID: "robot")),
+            ChassisRemoteBinding(instanceID: "chassis", plugin: ChassisPlugin(instanceID: "chassis")),
+            OutputRemoteBinding(instanceID: "output", plugin: ParameterOutputPlugin(limits: [.init(id: "x", minimum: 0, maximum: 1, maximumChange: 1, maximumVelocity: 1)]))
+        ])
+        for descriptor in registry.tools {
+            XCTAssertEqual(descriptor.outputSchema.objectValue?["type"], .string("object"), descriptor.name)
+        }
+        for domain in ["robot", "chassis"] {
+            let name = "surface_"+domain+"_trace"
+            let descriptor = try XCTUnwrap(registry.tools.first { $0.name == name })
+            XCTAssertEqual(descriptor.outputSchema.objectValue?["required"], .array([.string("samples")]))
+            XCTAssertEqual(descriptor.outputSchema.objectValue?["properties"]?.objectValue?["samples"]?.objectValue?["type"], .string("array"))
+            let response = try registry.call(name, arguments: .object(["instance_id": .string(domain)]), context: .init(time: 0))
+            XCTAssertEqual(response, .object(["samples": .array([])]))
         }
     }
 }
