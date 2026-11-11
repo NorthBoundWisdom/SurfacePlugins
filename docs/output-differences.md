@@ -16,3 +16,7 @@ Double timestamps, stable reason keys, and an explicit OSC address prefix suppli
 JSONParameterLink retains session/epoch/sequence freshness with caller-supplied session ID.
 ExampleParameterSets is opt-in data, including protected arm.enabled; layouts and legacy
 migration protection remain host responsibilities. No device control bindings are included.
+
+A late or equal-timeout heartbeat resets arming even if it arrives before evaluation. Fresh
+actual and heartbeat may be stored, but cannot erase the outage: evaluate remains waitingRearm
+until the host observes disabled then enabled. This intentionally strengthens the old full gate.

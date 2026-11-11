@@ -97,6 +97,7 @@ public struct MotionSafetyGate: Sendable {
         guard connected else { return }
         guard now.isFinite else { fault = "output.clock.nonfinite"; faultStatus = .clockError; return }
         if let heartbeat, now < heartbeat { fault = "output.clock.regressed"; faultStatus = .clockError; return }
+        if let heartbeat, now - heartbeat >= heartbeatTimeout { armed = false; observedDisabled = false }
         heartbeat = now
     }
 

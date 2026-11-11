@@ -42,3 +42,23 @@ final class OutputContractTests: XCTestCase {
         XCTAssertThrowsError(try p.setEnabled(true))
     }
 }
+
+final class HeartbeatGapTests: XCTestCase {
+    func testFreshPacketsAfterLateOrEqualGapCannotAutoRearm() throws {
+        for gap in [0.3, 0.6] {
+            var g = try MotionSafetyGate(limits: [.init(id: "x", minimum: -1, maximum: 1, maximumChange: 1, maximumVelocity: 1)])
+            g.setConnected(true, at: 0); g.receiveHeartbeat(at: 0)
+            g.receiveActual([.init(id: "x", value: 0, receivedAt: 0)])
+            _ = g.evaluate(targets: [:], enabled: false, at: 0)
+            XCTAssertEqual(g.evaluate(targets: ["x": 1], enabled: true, at: 0).status, .ready)
+            g.receiveHeartbeat(at: gap)
+            g.receiveActual([.init(id: "x", value: 0.1, receivedAt: gap)])
+            let blocked = g.evaluate(targets: ["x": 1], enabled: true, at: gap)
+            XCTAssertEqual(blocked.status, .waitingRearm)
+            XCTAssertFalse(blocked.command?.enabled ?? false)
+            _ = g.evaluate(targets: [:], enabled: false, at: gap)
+            XCTAssertEqual(g.evaluate(targets: ["x": 1], enabled: true, at: gap).status, .ready)
+            XCTAssertEqual(g.outputs["x"], 0.1)
+        }
+    }
+}
