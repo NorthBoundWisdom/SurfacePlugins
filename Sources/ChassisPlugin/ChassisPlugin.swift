@@ -12,6 +12,13 @@ public struct ChassisPlugin: ControlPlugin {
     public init(deviceID: String = "chassis.reference", model: AckermannModel = .reference, instanceID: String) throws {
         simulator = try ChassisSimulator(deviceID: deviceID, model: model, instanceID: instanceID)
     }
+    /// Remote adapters use the same lifecycle gate as the semantic surface.
+    public var acceptsWrites: Bool { started && !stopping }
+    /// Explicit simulation stepping may finish a pending stop, but never restarts an instance.
+    public mutating func advanceSimulation(_ dt: Double) throws {
+        try simulator.advance(dt)
+        if stopping && !(!simulator.snapshot().stopped && simulator.snapshot().actual != nil) { started = false; stopping = false }
+    }
     public var surface: SurfaceDescriptor {
         .init(actions: [.init(id: "chassis.stop", nameKey: "chassis.stop")],
               indicators: [.init(id: "chassis.state", nameKey: "chassis.state")])
@@ -37,7 +44,7 @@ public struct ChassisPlugin: ControlPlugin {
                 guard end.isFinite else { throw PluginError(code: .invalidTime) }
                 while next.simulator.control.time < end {
                     let dt = min(0.1, end - next.simulator.control.time)
-                    try next.simulator.advance(dt)
+                    try next.advanceSimulation(dt)
                 }
                 if next.stopping && next.simulator.snapshot().stopped { next.started = false; next.stopping = false }
             }

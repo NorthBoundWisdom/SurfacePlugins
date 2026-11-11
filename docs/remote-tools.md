@@ -64,3 +64,10 @@ with a complete match, as provided by RemoteRegistry.validIdentifier.
 No retry engine is included. If a mutation response is lost, the host reports outcomeUnknown
 and clients recover from snapshot/control state; reconnect must not replay side effects.
 Transport listeners, authentication, credentials, request identity, and retry policy belong to hosts.
+
+Robot/chassis bindings enforce their plugin lifecycle before every write. Hosts must explicitly
+start each instance. While stopped or finishing a lifecycle stop, initialize/acquire/enable/
+renew/release/move/drive/reset/stop reject with stopped. Snapshot and trace remain pure reads;
+explicit simulation advance can finish braking and cannot restart the plugin. Both remote and
+surface stepping update the same lifecycle completion state. A host restart is explicit and
+does not restore old ownership or resume motion.

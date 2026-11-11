@@ -50,6 +50,9 @@ public struct RobotRemoteBinding: RemoteBinding {
     private mutating func execute(_ name: String, arguments: JSONValue, context: RemoteCallContext) throws -> JSONValue {
         guard let tool = tools.first(where: { $0.name == name }) else { throw PluginError(code: .unsupported) }
         let a = try RemoteArguments(arguments, tool: tool, instanceID: instanceID)
+        if tool.isMutation && name != "surface_robot_advance" {
+            guard plugin.acceptsWrites else { throw PluginError(code: .stopped) }
+        }
         var next = plugin
         let response: JSONValue
         switch name {
@@ -65,7 +68,7 @@ public struct RobotRemoteBinding: RemoteBinding {
         case "surface_robot_release": try next.simulator.release(proof(a))
         case "surface_robot_move": try next.simulator.move(proof(a), target: a.numbers("target_joints_rad"), duration: a.number("duration_s"), validFor: a.number("valid_for_s"))
         case "surface_robot_stop": try next.simulator.stop(proof(a))
-        case "surface_robot_advance": try next.simulator.advance(a.number("dt_s"))
+        case "surface_robot_advance": try next.advanceSimulation(a.number("dt_s"))
         case "surface_robot_reset": try next.simulator.reset(generation: a.string("generation"))
         default: throw PluginError(code: .unsupported)
         }

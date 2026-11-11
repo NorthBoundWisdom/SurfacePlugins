@@ -61,6 +61,7 @@ final class RemoteTests: XCTestCase {
     func testRobotAcquireUsesHostEntropyAndSnapshotNeverLeaksToken() throws {
         var r = try RemoteRegistry(epoch: "test")
         try r.install(RobotRemoteBinding(instanceID: "robot", plugin: RobotPlugin(instanceID: "robot")))
+        _ = try r.handle(instanceID: "robot", input: .start, at: 0)
         let snapshot = try r.call("surface_robot_snapshot", arguments: args(id: "robot"), context: .init(time: 0))
         let generation = try XCTUnwrap(snapshot.objectValue?["metadata"]?.objectValue?["generation"])
         let initialized = try r.call("surface_robot_initialize", arguments: args(["generation": generation, "joints_rad": .array(Array(repeating: .number(0), count: 6))], id: "robot"), context: .init(time: 0))
@@ -100,6 +101,7 @@ final class DeviceRemoteLifecycleTests: XCTestCase {
             var r = try RemoteRegistry(epoch: "test")
             if domain == "robot" { try r.install(RobotRemoteBinding(instanceID: domain, plugin: RobotPlugin(instanceID: domain))) }
             else { try r.install(ChassisRemoteBinding(instanceID: domain, plugin: ChassisPlugin(instanceID: domain))) }
+            _ = try r.handle(instanceID: domain, input: .start, at: 0)
             func arguments(_ values: [String: JSONValue] = [:]) -> JSONValue { .object(values.merging(["instance_id": .string(domain)]) { _,new in new }) }
             let prefix = "surface_" + domain + "_"
             let unknown = try r.call(prefix+"snapshot", arguments: arguments(), context: .init(time: 0))
@@ -238,5 +240,55 @@ final class PublicModelConstructorTests: XCTestCase {
                                      maximum_steering_rad: 0.4, maximum_steering_rate_rad_s: 0.5)
         XCTAssertEqual(try RobotSimulator(model: robot, instanceID: "robot").model.minimum, [-1])
         XCTAssertEqual(try ChassisSimulator(model: chassis, instanceID: "chassis").model.wheelbase_m, 2)
+    }
+}
+
+final class RemoteLifecycleGateTests: XCTestCase {
+    func testPendingAndCompletedStopRejectAllDeviceWrites() throws {
+        for domain in ["robot", "chassis"] {
+            var registry = try RemoteRegistry(epoch: "fixture")
+            if domain == "robot" { try registry.install(RobotRemoteBinding(instanceID: domain, plugin: RobotPlugin(instanceID: domain))) }
+            else { try registry.install(ChassisRemoteBinding(instanceID: domain, plugin: ChassisPlugin(instanceID: domain))) }
+            _ = try registry.handle(instanceID: domain, input: .start, at: 0)
+            func arguments(_ values: [String: JSONValue] = [:]) -> JSONValue { .object(values.merging(["instance_id": .string(domain)]) { _,new in new }) }
+            let prefix = "surface_" + domain + "_"
+            let initial = try registry.call(prefix+"snapshot", arguments: arguments(), context: .init(time: 0))
+            let generation = try XCTUnwrap(initial.objectValue?["metadata"]?.objectValue?["generation"])
+            let initialized = try registry.call(prefix+"initialize", arguments: arguments(["generation": generation, domain == "robot" ? "joints_rad" : "pose_m_rad": .array(Array(repeating: .number(0), count: domain == "robot" ? 6 : 3))]), context: .init(time: 0))
+            let current = try XCTUnwrap(initialized.objectValue?["metadata"]?.objectValue?["generation"])
+            let grant = try registry.call(prefix+"acquire", arguments: arguments(["generation": current, "owner": .string("fixture"), "ttl_s": .number(5)]), context: .init(time: 0, controlToken: "opaque"))
+            let token = try XCTUnwrap(grant.objectValue?["control_token"])
+            let proof: [String: JSONValue] = ["generation": current, "control_token": token, "sequence": .number(1)]
+            _ = try registry.call(prefix+"enable", arguments: arguments(proof), context: .init(time: 0))
+            var move = proof; move["sequence"] = .number(2); move["valid_for_s"] = .number(2)
+            if domain == "robot" { move["target_joints_rad"] = .array([.number(1),.number(0),.number(0),.number(0),.number(0),.number(0)]); move["duration_s"] = .double(1.5) }
+            else { move["speed_m_s"] = .double(0.8); move["steering_angle_rad"] = .double(0.3) }
+            _ = try registry.call(prefix+(domain == "robot" ? "move" : "drive"), arguments: arguments(move), context: .init(time: 0))
+            _ = try registry.handle(instanceID: domain, input: .advance, at: 0.5)
+            _ = try registry.handle(instanceID: domain, input: .stop, at: 0.5)
+            XCTAssertEqual(registry.snapshot(instanceID: domain)?.isStarted, true)
+            let writes = registry.tools.filter { $0.name.hasPrefix(prefix) && $0.isMutation && $0.name != prefix+"advance" }
+            func testWrites(_ r: inout RemoteRegistry) throws {
+                for tool in writes {
+                    let fields = try XCTUnwrap(tool.inputSchema.objectValue?["properties"]?.objectValue)
+                    var input: [String: JSONValue] = [:]
+                    for (key, schema) in fields {
+                        let type = schema.objectValue?["type"]?.stringValue
+                        input[key] = type == "array" ? .array(Array(repeating: .number(0), count: domain == "robot" ? 6 : 3)) : type == "string" ? .string("fixture") : .number(1)
+                    }
+                    input["instance_id"] = .string(domain)
+                    XCTAssertThrowsError(try r.call(tool.name, arguments: .object(input), context: .init(time: 0.5, controlToken: "next-opaque"))) {
+                        XCTAssertEqual(($0 as? RemoteFailure)?.code, "stopped", tool.name)
+                    }
+                }
+            }
+            try testWrites(&registry)
+            for _ in 0..<20 { _ = try registry.call(prefix+"advance", arguments: arguments(["dt_s": .double(0.1)]), context: .init(time: 0.5)) }
+            XCTAssertEqual(registry.snapshot(instanceID: domain)?.isStarted, false)
+            try testWrites(&registry)
+            let stopped = try registry.call(prefix+"snapshot", arguments: arguments(), context: .init(time: 0.5))
+            XCTAssertEqual(stopped.objectValue?["stopped"], .bool(true))
+            XCTAssertNoThrow(try registry.call(prefix+"trace", arguments: arguments(), context: .init(time: 0.5)))
+        }
     }
 }
