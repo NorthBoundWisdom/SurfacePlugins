@@ -130,13 +130,6 @@ public struct RemoteRegistry: Sendable {
     private func validateReplacement(_ binding: any RemoteBinding) throws {
         guard let old = bindings[binding.instanceID], old.manifest == binding.manifest, old.tools == binding.tools, old.surface == binding.surface else { throw PluginError(code: .generationMismatch) }
     }
-    /// Metadata-only synchronization; never use this overload for production state mutation.
-    /// Visible state changes require the event-bearing overload, including trusted typed commands.
-    public mutating func replace(_ binding: any RemoteBinding) throws {
-        try validateReplacement(binding)
-        guard bindings[binding.instanceID]?.snapshot() == binding.snapshot() else { throw PluginError(code: .invalidParameter) }
-        bindings[binding.instanceID] = binding
-    }
     /// Atomically commit one trusted typed operation and its observable event.
     /// Event fields must never include tokens, credentials, or command proofs.
     public mutating func replace(_ binding: any RemoteBinding, at time: PluginTime, event: PluginEvent) throws {

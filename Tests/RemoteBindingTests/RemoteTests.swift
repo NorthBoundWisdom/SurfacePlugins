@@ -199,7 +199,6 @@ final class TrustedUpdateTests: XCTestCase {
         try r.install(AgentRemoteBinding(instanceID: "agent", plugin: p))
         var b = try XCTUnwrap(r.binding("agent", as: AgentRemoteBinding.self))
         _ = try b.plugin.handle(.invoke(.init(pluginID: "agent", actionID: "agent.primary", index: 1), origin: .interface), at: 1)
-        XCTAssertThrowsError(try r.replace(b))
         try r.replace(b, at: 1, event: .init(code: "local.agent.primary"))
         let request: JSONValue = .object(["epoch": .string("fixture"), "after": .string("0"), "limit": .number(128)])
         let page = try r.call("surface_events", arguments: request, context: .init(time: 1))

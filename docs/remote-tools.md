@@ -57,9 +57,7 @@ operations and read-only calls append nothing. Events contain operation codes or
 update codes, never control proofs/tokens. surface_events returns epoch/gap/events/latestSequence.
 A cursor older than retained history, from an old epoch, or beyond the newest sequence reports
 gap. Slow readers refetch snapshots. Reading events/snapshots never advances clock or replays
-inputs. Trusted typed replace commits canonical state and an event atomically. The overload without
-time/event is restricted to metadata-only synchronization with an unchanged visible snapshot;
-production typed mutations must always use the event-bearing overload. Failed replacement
+inputs. Trusted typed replace commits canonical state and an event atomically. There is no eventless replacement API; trusted typed writes always provide time and event. Failed replacement
 commits neither state nor journal. Identifier grammar is `[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)*`
 with a complete match, as provided by RemoteRegistry.validIdentifier.
 
