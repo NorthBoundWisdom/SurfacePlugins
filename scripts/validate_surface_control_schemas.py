@@ -33,7 +33,7 @@ def main():
     assert any(event.get("reason") == "hold_expired" for sample in examples
                if sample["tool"] == "surface_control_events" for event in sample["result"]["events"]), "Missing expiry example"
     counts = {}
-    for name in ("surface-control-software-v1.json", "surface-control-software-v1.1.json", "surface-control-software-v1.2.json"):
+    for name in ("surface-control-software-v1.json", "surface-control-software-v1.1.json", "surface-control-software-v1.2.json", "surface-control-software-v1.3.json"):
         fixture = json.loads((root / "fixtures" / name).read_text())
         Draft202012Validator(scenario_schema).validate(fixture)
         for scenario in fixture["scenarios"]:
@@ -43,9 +43,11 @@ def main():
                 role = step.get("role")
                 assert role is None or role in fixture["roles"], f"Unknown role: {role}"
                 if "hold_s" in step or step["operation"] == "renew" or step.get("value") in ("rest", "active"):
-                    assert fixture.get("contract_version") in ("1.1", "1.2"), f"1.1 step in 1.0 fixture: {scenario['id']}"
+                    assert fixture.get("contract_version") in ("1.1", "1.2", "1.3"), f"1.1 step in 1.0 fixture: {scenario['id']}"
                 if "omit_sequence" in step or "expected_sequence" in step or step["operation"] == "refresh_sequence" or "hold_deadlines_at_s" in step["expect"]:
-                    assert fixture.get("contract_version") == "1.2", f"1.2 step in old fixture: {scenario['id']}"
+                    assert fixture.get("contract_version") in ("1.2", "1.3"), f"1.2 step in old fixture: {scenario['id']}"
+                if "expected_input_sequence" in step or "latest_input_sequence" in step["expect"]:
+                    assert fixture.get("contract_version") == "1.3", "1.3 step in old fixture"
                 if "omit_sequence" in step:
                     assert step["operation"] == "feedback", "Only feedback may omit sequence"
                 assert set(step["expect"].get("hold_deadlines_at_s", {})) <= set(fixture["roles"]), "Unknown hold role"

@@ -80,7 +80,8 @@ public enum ControlCapability {
     public static let registered: Set<String> = [
         "simulation", "controls.stable_ids", "controls.layered", "input.absolute", "input.relative",
         "input.button", "input.hold", "feedback.value", "feedback.indicator",
-        "feedback.unsequenced", "controls.input_declared"
+        "feedback.unsequenced", "controls.input_declared", "input.independent_sequence",
+        "events.writer_id", "writes.independent_limits"
     ]
     /// `x.<host>.<name>`: three or more nonempty dot-separated components starting with `x`.
     public static func isHostPrivate(_ value: String) -> Bool {
@@ -239,14 +240,16 @@ public struct ControlExpected: Equatable, Codable, Sendable {
 
 public struct ControlInput: Equatable, Codable, Sendable {
     public let expected: ControlExpected
-    public let expected_sequence: String
+    public let expected_sequence: String?
+    public let expected_input_sequence: String?
     public let control_id: String
     public let encoding: String
     public let value: JSONValue
     /// Contract 1.1, optional lease duration in seconds, (0, hold.max_hold_s]. Absent in 1.0 requests.
     public let hold_s: Double?
-    public init(expected: ControlExpected, expectedSequence: String, controlID: String, encoding: String, value: JSONValue, holdSeconds: Double? = nil) {
-        self.expected = expected; expected_sequence = expectedSequence; control_id = controlID; self.encoding = encoding; self.value = value
+    public init(expected: ControlExpected, expectedSequence: String? = nil, expectedInputSequence: String? = nil, controlID: String, encoding: String, value: JSONValue, holdSeconds: Double? = nil) {
+        self.expected = expected; expected_sequence = expectedSequence; expected_input_sequence = expectedInputSequence
+        control_id = controlID; self.encoding = encoding; self.value = value
         hold_s = holdSeconds
     }
 }
@@ -285,15 +288,17 @@ public struct ControlFeedback: Equatable, Codable, Sendable {
 
 public struct ControlDiscovery: Equatable, Codable, Sendable {
     /// Additive minor version. `schema_version` stays 1: 1.0 requests remain valid and 1.1 fields are optional.
-    public static let contractVersion = "1.2"
+    public static let contractVersion = "1.3"
     public let schema_version: Int
     public let contract_version: String
     public let source: PluginSource
     public let expected: ControlExpected
     public let profile: ControlProfile
     public let latest_sequence: String
-    public init(expected: ControlExpected, profile: ControlProfile, latestSequence: String) {
-        latest_sequence = latestSequence
+    public let latest_input_sequence: String?
+    public let write_limits: ControlWriteLimits?
+    public init(expected: ControlExpected, profile: ControlProfile, latestSequence: String, latestInputSequence: String? = nil, writeLimits: ControlWriteLimits? = nil) {
+        latest_sequence = latestSequence; latest_input_sequence = latestInputSequence; write_limits = writeLimits
         schema_version = 1; contract_version = Self.contractVersion; source = .simulation; self.expected = expected; self.profile = profile
     }
 }
@@ -302,6 +307,8 @@ public struct ControlEvent: Equatable, Codable, Sendable {
     public let expected: ControlExpected
     /// Decimal strings preserve the complete cursor across JSON clients.
     public let sequence: String
+    public let input_sequence: String?
+    public let writer_id: String?
     public let time: Double
     public let source: PluginSource
     public let origin: InputOrigin
@@ -320,6 +327,7 @@ public struct ControlSnapshot: Equatable, Codable, Sendable {
     public let discovery: ControlDiscovery
     public let server_time: Double
     public let latest_sequence: String
+    public let latest_input_sequence: String?
     public let inputs: [String: JSONValue]
     public let feedback: [String: [String: JSONValue]]
     /// Contract 1.1: active lease deadlines by control ID. Omitted when no lease is held.
@@ -329,7 +337,26 @@ public struct ControlEventPage: Equatable, Codable, Sendable {
     public let server_time: Double
     public let expected: ControlExpected
     public let latest_sequence: String
+    public let latest_input_sequence: String?
     public let events: [ControlEvent]
     /// Contract 1.2: current leases at page read time, omitted when empty.
     public let holds: [String: Double]?
+}
+
+/// Host-owned fixed-window write policy; no clock, counters, credentials, or I/O in the contract.
+public struct ControlWriteLimits: Equatable, Codable, Sendable {
+    public let window_s: Int
+    public let input_per_window: Int
+    public let feedback_per_window: Int
+    public let renew_per_window: Int
+    public let admin_per_window: Int
+    public init(windowSeconds: Int = 1, inputPerWindow: Int, feedbackPerWindow: Int, renewPerWindow: Int, adminPerWindow: Int) {
+        window_s = windowSeconds; input_per_window = inputPerWindow; feedback_per_window = feedbackPerWindow
+        renew_per_window = renewPerWindow; admin_per_window = adminPerWindow
+    }
+    public func validate() throws {
+        guard window_s == 1, [input_per_window, feedback_per_window, renew_per_window, admin_per_window].allSatisfy({ (1...10000).contains($0) }) else {
+            throw ControlContractError("invalid_argument")
+        }
+    }
 }

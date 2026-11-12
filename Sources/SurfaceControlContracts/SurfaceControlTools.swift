@@ -34,32 +34,48 @@ public enum SurfaceControlTools {
             "accepts_input": s.boolean
         ], optional: ["range", "feedback_range", "mapping", "hold", "accepts_input"]))])
     }
+    private static var writeLimitsSchema: JSONValue {
+        let s = RemoteSchema.self
+        let limit: JSONValue = .object(["type": .string("integer"), "minimum": .number(1), "maximum": .number(10000)])
+        return s.object(["window_s": .object(["type": .string("integer"), "enum": .array([.number(1)])]),
+                         "input_per_window": limit, "feedback_per_window": limit, "renew_per_window": limit, "admin_per_window": limit])
+    }
+    private static var inputSchema: JSONValue {
+        let s = RemoteSchema.self
+        var fields = s.object(["expected": expectedSchema, "expected_sequence": s.string, "expected_input_sequence": s.string,
+            "control_id": s.string, "encoding": s.string, "value": valueSchema, "hold_s": s.number],
+            optional: ["hold_s", "expected_sequence", "expected_input_sequence"]).objectValue!
+        fields["oneOf"] = .array(["expected_sequence", "expected_input_sequence"].map {
+            .object(["required": .array([.string($0)])])
+        })
+        return .object(fields)
+    }
     private static var discoverySchema: JSONValue {
         let s = RemoteSchema.self
         return s.object(["schema_version": s.integer, "contract_version": s.string, "source": s.string,
-                         "expected": expectedSchema, "latest_sequence": s.string, "profile": profileSchema])
+                         "expected": expectedSchema, "latest_sequence": s.string, "profile": profileSchema,
+                         "latest_input_sequence": s.string, "write_limits": writeLimitsSchema], optional: ["latest_input_sequence", "write_limits"])
     }
     private static var eventSchema: JSONValue {
         let s = RemoteSchema.self
-        return s.object(["expected": expectedSchema, "sequence": s.string, "time": s.number, "source": s.string,
+        return s.object(["expected": expectedSchema, "sequence": s.string, "input_sequence": s.string, "writer_id": s.string, "time": s.number, "source": s.string,
             "origin": s.string, "kind": s.string, "control_id": s.string, "encoding": s.string,
             "value": valueSchema, "disposition": s.string, "mapped_value": valueSchema, "reason": s.string, "hold_deadline": s.number],
-            optional: ["mapped_value", "reason", "hold_deadline"])
+            optional: ["mapped_value", "reason", "hold_deadline", "input_sequence", "writer_id"])
     }
     public static var descriptors: [RemoteToolDescriptor] {
         let s = RemoteSchema.self
         return [
             .init(name: "surface_control_discover", fields: [:], output: discoverySchema, isMutation: false),
             .init(name: "surface_control_snapshot", fields: ["instance_id": s.string], output: s.object([
-                "discovery": discoverySchema, "server_time": s.number, "latest_sequence": s.string, "inputs": mapSchema,
+                "discovery": discoverySchema, "server_time": s.number, "latest_sequence": s.string, "latest_input_sequence": s.string, "inputs": mapSchema,
                 "feedback": .object(["type": .string("object"), "additionalProperties": mapSchema]),
-                "holds": .object(["type": .string("object"), "additionalProperties": s.number])], optional: ["holds"]), isMutation: false),
-            .init(name: "surface_control_input", fields: ["expected": expectedSchema, "expected_sequence": s.string, "control_id": s.string, "encoding": s.string, "value": valueSchema, "hold_s": s.number],
-                  optional: ["hold_s"], output: eventSchema, isMutation: true),
+                "holds": .object(["type": .string("object"), "additionalProperties": s.number])], optional: ["holds", "latest_input_sequence"]), isMutation: false),
+            .init(name: "surface_control_input", inputSchema: inputSchema, output: eventSchema, isMutation: true),
             .init(name: "surface_control_feedback", fields: ["expected": expectedSchema, "expected_sequence": s.string, "control_id": s.string, "kind": s.string, "value": valueSchema], optional: ["expected_sequence"], output: eventSchema, isMutation: true),
             .init(name: "surface_control_events", fields: ["instance_id": s.string, "epoch": s.string, "after_sequence": s.string, "limit": s.integer], output: s.object([
-                "expected": expectedSchema, "server_time": s.number, "latest_sequence": s.string, "events": s.array(eventSchema),
-                "holds": .object(["type": .string("object"), "additionalProperties": s.number])], optional: ["holds"]), isMutation: false),
+                "expected": expectedSchema, "server_time": s.number, "latest_sequence": s.string, "latest_input_sequence": s.string, "events": s.array(eventSchema),
+                "holds": .object(["type": .string("object"), "additionalProperties": s.number])], optional: ["holds", "latest_input_sequence"]), isMutation: false),
             .init(name: "surface_control_reset", fields: ["expected": expectedSchema, "expected_sequence": s.string], output: discoverySchema, isMutation: true),
             // Silent lease renewal: consumes no sequence and writes no event, but needs input permission and write budget.
             .init(name: "surface_control_renew", fields: ["expected": expectedSchema, "control_id": s.string, "hold_s": s.number],
@@ -91,6 +107,10 @@ public enum SurfaceControlTools {
     private static func matches(_ value: JSONValue, schema: JSONValue) -> Bool {
         guard let fields = schema.objectValue else { return false }
         if let choices = fields["anyOf"]?.arrayValue { return choices.contains { matches(value, schema: $0) } }
+        if let choices = fields["oneOf"]?.arrayValue, choices.filter({ matches(value, schema: $0) }).count != 1 { return false }
+        if fields["type"] == nil, let required = fields["required"]?.arrayValue?.compactMap(\.stringValue) {
+            return value.objectValue.map { Set(required).isSubset(of: Set($0.keys)) } ?? false
+        }
         switch fields["type"]?.stringValue {
         case "object":
             guard let object = value.objectValue, let properties = fields["properties"]?.objectValue,

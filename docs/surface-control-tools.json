@@ -1,5 +1,5 @@
 {
-  "contract_version" : "1.2",
+  "contract_version" : "1.3",
   "schema_version" : 1,
   "tools" : [
     {
@@ -54,6 +54,10 @@
               "profile_version"
             ],
             "type" : "object"
+          },
+          "latest_input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
           },
           "latest_sequence" : {
             "minLength" : 1,
@@ -212,6 +216,45 @@
           "source" : {
             "minLength" : 1,
             "type" : "string"
+          },
+          "write_limits" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "admin_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "feedback_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "input_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "renew_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "window_s" : {
+                "enum" : [
+                  1
+                ],
+                "type" : "integer"
+              }
+            },
+            "required" : [
+              "admin_per_window",
+              "feedback_per_window",
+              "input_per_window",
+              "renew_per_window",
+              "window_s"
+            ],
+            "type" : "object"
           }
         },
         "required" : [
@@ -283,6 +326,10 @@
                   "profile_version"
                 ],
                 "type" : "object"
+              },
+              "latest_input_sequence" : {
+                "minLength" : 1,
+                "type" : "string"
               },
               "latest_sequence" : {
                 "minLength" : 1,
@@ -441,6 +488,45 @@
               "source" : {
                 "minLength" : 1,
                 "type" : "string"
+              },
+              "write_limits" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "admin_per_window" : {
+                    "maximum" : 10000,
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "feedback_per_window" : {
+                    "maximum" : 10000,
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "input_per_window" : {
+                    "maximum" : 10000,
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "renew_per_window" : {
+                    "maximum" : 10000,
+                    "minimum" : 1,
+                    "type" : "integer"
+                  },
+                  "window_s" : {
+                    "enum" : [
+                      1
+                    ],
+                    "type" : "integer"
+                  }
+                },
+                "required" : [
+                  "admin_per_window",
+                  "feedback_per_window",
+                  "input_per_window",
+                  "renew_per_window",
+                  "window_s"
+                ],
+                "type" : "object"
               }
             },
             "required" : [
@@ -496,6 +582,10 @@
             },
             "type" : "object"
           },
+          "latest_input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
           "latest_sequence" : {
             "minLength" : 1,
             "type" : "string"
@@ -517,6 +607,18 @@
     {
       "inputSchema" : {
         "additionalProperties" : false,
+        "oneOf" : [
+          {
+            "required" : [
+              "expected_sequence"
+            ]
+          },
+          {
+            "required" : [
+              "expected_input_sequence"
+            ]
+          }
+        ],
         "properties" : {
           "control_id" : {
             "minLength" : 1,
@@ -559,6 +661,10 @@
             ],
             "type" : "object"
           },
+          "expected_input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
           "expected_sequence" : {
             "minLength" : 1,
             "type" : "string"
@@ -585,7 +691,6 @@
           "control_id",
           "encoding",
           "expected",
-          "expected_sequence",
           "value"
         ],
         "type" : "object"
@@ -643,6 +748,10 @@
           "hold_deadline" : {
             "type" : "number"
           },
+          "input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
           "kind" : {
             "minLength" : 1,
             "type" : "string"
@@ -693,6 +802,10 @@
                 "type" : "string"
               }
             ]
+          },
+          "writer_id" : {
+            "minLength" : 1,
+            "type" : "string"
           }
         },
         "required" : [
@@ -835,6 +948,10 @@
           "hold_deadline" : {
             "type" : "number"
           },
+          "input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
           "kind" : {
             "minLength" : 1,
             "type" : "string"
@@ -885,6 +1002,10 @@
                 "type" : "string"
               }
             ]
+          },
+          "writer_id" : {
+            "minLength" : 1,
+            "type" : "string"
           }
         },
         "required" : [
@@ -987,6 +1108,10 @@
                 "hold_deadline" : {
                   "type" : "number"
                 },
+                "input_sequence" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
                 "kind" : {
                   "minLength" : 1,
                   "type" : "string"
@@ -1037,6 +1162,10 @@
                       "type" : "string"
                     }
                   ]
+                },
+                "writer_id" : {
+                  "minLength" : 1,
+                  "type" : "string"
                 }
               },
               "required" : [
@@ -1093,6 +1222,10 @@
               "type" : "number"
             },
             "type" : "object"
+          },
+          "latest_input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
           },
           "latest_sequence" : {
             "minLength" : 1,
@@ -1200,6 +1333,10 @@
               "profile_version"
             ],
             "type" : "object"
+          },
+          "latest_input_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
           },
           "latest_sequence" : {
             "minLength" : 1,
@@ -1358,6 +1495,45 @@
           "source" : {
             "minLength" : 1,
             "type" : "string"
+          },
+          "write_limits" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "admin_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "feedback_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "input_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "renew_per_window" : {
+                "maximum" : 10000,
+                "minimum" : 1,
+                "type" : "integer"
+              },
+              "window_s" : {
+                "enum" : [
+                  1
+                ],
+                "type" : "integer"
+              }
+            },
+            "required" : [
+              "admin_per_window",
+              "feedback_per_window",
+              "input_per_window",
+              "renew_per_window",
+              "window_s"
+            ],
+            "type" : "object"
           }
         },
         "required" : [

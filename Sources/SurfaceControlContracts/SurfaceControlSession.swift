@@ -7,7 +7,10 @@ public struct SurfaceControlSession: Sendable {
     public private(set) var expected: ControlExpected
     public private(set) var profile: ControlProfile
     public let eventCapacity: Int
-    private var sequence: UInt64 = 0
+    // Internal counters permit exhaustion boundary tests without a public state-injection API.
+    var sequence: UInt64 = 0
+    var inputSequence: UInt64 = 0
+    public let writeLimits: ControlWriteLimits?
     private var records: [ControlEvent] = []
     private var inputs: [String: JSONValue] = [:]
     private var feedback: [String: [String: JSONValue]] = [:]
@@ -16,15 +19,17 @@ public struct SurfaceControlSession: Sendable {
     private var lastTime: Double?
     private var seeded = false
 
-    public init(instanceID: String, epoch: String, mappingRevision: String, profile: ControlProfile, eventCapacity: Int = 1024) throws {
+    public init(instanceID: String, epoch: String, mappingRevision: String, profile: ControlProfile, eventCapacity: Int = 1024, writeLimits: ControlWriteLimits? = nil) throws {
         guard !instanceID.isEmpty, !epoch.isEmpty, !mappingRevision.isEmpty, eventCapacity > 0, eventCapacity <= 65536 else { throw ControlContractError("invalid_argument") }
         try profile.validate()
+        try writeLimits?.validate()
+        guard profile.capabilities.contains("writes.independent_limits") == (writeLimits != nil) else { throw ControlContractError("invalid_profile") }
         expected = .init(instanceID: instanceID, epoch: epoch, mappingRevision: mappingRevision, profileID: profile.id, profileVersion: profile.version)
-        self.profile = profile; self.eventCapacity = eventCapacity
+        self.profile = profile; self.eventCapacity = eventCapacity; self.writeLimits = writeLimits
     }
     /// Contract 1.1 convenience: uses the deterministic `profile.mappingRevision`.
-    public init(instanceID: String, epoch: String, profile: ControlProfile, eventCapacity: Int = 1024) throws {
-        try self.init(instanceID: instanceID, epoch: epoch, mappingRevision: profile.mappingRevision, profile: profile, eventCapacity: eventCapacity)
+    public init(instanceID: String, epoch: String, profile: ControlProfile, eventCapacity: Int = 1024, writeLimits: ControlWriteLimits? = nil) throws {
+        try self.init(instanceID: instanceID, epoch: epoch, mappingRevision: profile.mappingRevision, profile: profile, eventCapacity: eventCapacity, writeLimits: writeLimits)
     }
     /// Session numeric form: integral values representable as Int become `.number`, other numbers `.double`.
     /// Applied recursively, so equal numbers compare equal regardless of their wire representation.
@@ -36,11 +41,12 @@ public struct SurfaceControlSession: Sendable {
         default: return value
         }
     }
-    public func discovery() -> ControlDiscovery { .init(expected: expected, profile: profile, latestSequence: String(sequence)) }
+    private var publicInputSequence: String? { profile.capabilities.contains("input.independent_sequence") ? String(inputSequence) : nil }
+    public func discovery() -> ControlDiscovery { .init(expected: expected, profile: profile, latestSequence: String(sequence), latestInputSequence: publicInputSequence, writeLimits: writeLimits) }
     public func snapshot(at time: Double) throws -> ControlSnapshot {
         try validateReadTime(time)
         try validateNoPendingExpiry(at: time)
-        return .init(discovery: discovery(), server_time: time, latest_sequence: String(sequence), inputs: inputs, feedback: feedback,
+        return .init(discovery: discovery(), server_time: time, latest_sequence: String(sequence), latest_input_sequence: publicInputSequence, inputs: inputs, feedback: feedback,
                      holds: holds.isEmpty ? nil : holds)
     }
 
@@ -73,9 +79,16 @@ public struct SurfaceControlSession: Sendable {
         return input.hold_s == nil || control.hold.map { Self.normalized($0.rest_value) == value } == true
     }
     /// Validate before calling the host engine. No clamping, rounding, or encoding fallback.
-    @discardableResult public func validateInput(_ input: ControlInput, at time: Double? = nil) throws -> ControlDescriptor {
+    @discardableResult public func validateInput(_ input: ControlInput, at time: Double? = nil, writerID: String? = nil) throws -> ControlDescriptor {
         try validateExpected(input.expected)
-        try validateSequence(input.expected_sequence)
+        guard (input.expected_sequence == nil) != (input.expected_input_sequence == nil) else { throw ControlContractError("invalid_argument") }
+        if let value = input.expected_sequence { try validateSequence(value) }
+        if let value = input.expected_input_sequence {
+            guard profile.capabilities.contains("input.independent_sequence") else { throw ControlContractError("invalid_argument") }
+            try validateInputSequence(value)
+        }
+        try validateWriterID(writerID)
+        guard sequence < UInt64.max, inputSequence < UInt64.max else { throw ControlContractError("sequence_exhausted") }
         if let time { try validateTime(time); try validateNoPendingExpiry(at: time) }
         guard let control = profile.controls.first(where: { $0.id == input.control_id }) else { throw ControlContractError("unsupported_control") }
         guard control.accepts_input != false else { throw ControlContractError("permission_denied") }
@@ -88,10 +101,12 @@ public struct SurfaceControlSession: Sendable {
         guard let hold = control.hold else { throw ControlContractError("unsupported_hold") }
         guard seconds.isFinite, seconds > 0, seconds <= hold.max_hold_s else { throw ControlContractError("invalid_argument") }
     }
-    public func validateFeedback(_ update: ControlFeedback, at time: Double? = nil) throws {
+    public func validateFeedback(_ update: ControlFeedback, at time: Double? = nil, writerID: String? = nil) throws {
         try validateExpected(update.expected)
         if let sequence = update.expected_sequence { try validateSequence(sequence) }
         else if !profile.capabilities.contains("feedback.unsequenced") { throw ControlContractError("invalid_argument") }
+        try validateWriterID(writerID)
+        guard sequence < UInt64.max else { throw ControlContractError("sequence_exhausted") }
         if let time { try validateTime(time); try validateNoPendingExpiry(at: time) }
         guard let control = profile.controls.first(where: { $0.id == update.control_id }) else { throw ControlContractError("unsupported_control") }
         guard let kind = ControlFeedbackKind(rawValue: update.kind), control.feedback_kinds.contains(kind) else { throw ControlContractError("unsupported_feedback") }
@@ -112,6 +127,17 @@ public struct SurfaceControlSession: Sendable {
     public func validateSequence(_ value: String) throws {
         guard let parsed = UInt64(value), String(parsed) == value else { throw ControlContractError("invalid_argument") }
         guard parsed == sequence else { throw ControlContractError("stale_sequence") }
+    }
+    public func validateInputSequence(_ value: String) throws {
+        guard let parsed = UInt64(value), String(parsed) == value else { throw ControlContractError("invalid_argument") }
+        guard parsed == inputSequence else { throw ControlContractError("stale_input_sequence") }
+    }
+    /// A trusted host injects a public opaque principal after authenticating the caller.
+    /// This method never accepts a credential or derives an identity.
+    public func validateWriterID(_ writerID: String?) throws {
+        if profile.capabilities.contains("events.writer_id") {
+            guard let writerID, ControlProfile.validID(writerID) else { throw ControlContractError("invalid_argument") }
+        } else if writerID != nil { throw ControlContractError("invalid_argument") }
     }
     /// Trusted host bootstrap from the current Mock model only. Unknown controls may be omitted.
     /// This is not a remotely callable observation API and never creates an input event.
@@ -136,8 +162,8 @@ public struct SurfaceControlSession: Sendable {
         }
     }
     @discardableResult public mutating func recordInput(_ input: ControlInput, disposition: ControlDisposition,
-        mappedValue: JSONValue? = nil, reason: String? = nil, origin: InputOrigin, at time: Double) throws -> ControlEvent {
-        let control = try validateInput(input, at: time)
+        mappedValue: JSONValue? = nil, reason: String? = nil, origin: InputOrigin, at time: Double, writerID: String? = nil) throws -> ControlEvent {
+        let control = try validateInput(input, at: time, writerID: writerID)
         try validateResult(disposition, mappedValue: mappedValue, reason: reason)
         let value = Self.normalized(input.value)
         var deadline: Double?
@@ -147,7 +173,7 @@ public struct SurfaceControlSession: Sendable {
             holds[input.control_id] = deadline
         }
         let event = append(kind: .input, controlID: input.control_id, encoding: input.encoding, value: value,
-                           disposition: disposition, mappedValue: mappedValue, reason: reason, origin: origin, at: time, holdDeadline: deadline)
+                           disposition: disposition, mappedValue: mappedValue, reason: reason, origin: origin, at: time, holdDeadline: deadline, writerID: writerID)
         if disposition == .accepted { inputs[input.control_id] = value }
         return event
     }
@@ -170,8 +196,10 @@ public struct SurfaceControlSession: Sendable {
     }
     /// Record a due lease after the host applied its rest value: `input/accepted/origin remote/reason hold_expired`.
     /// This is the only accepted input carrying a reason defined by this contract.
-    @discardableResult public mutating func recordHoldExpiry(controlID: String, mappedValue: JSONValue? = nil, at time: Double) throws -> ControlEvent {
+    @discardableResult public mutating func recordHoldExpiry(controlID: String, mappedValue: JSONValue? = nil, at time: Double, writerID: String? = nil) throws -> ControlEvent {
         try validateTime(time)
+        try validateWriterID(writerID)
+        guard inputSequence < UInt64.max else { throw ControlContractError("sequence_exhausted") }
         guard let deadline = holds[controlID], deadline <= time,
               let control = profile.controls.first(where: { $0.id == controlID }), let hold = control.hold else { throw ControlContractError("invalid_transition") }
         try validateResult(.accepted, mappedValue: mappedValue, reason: Self.holdExpiredReason)
@@ -179,24 +207,25 @@ public struct SurfaceControlSession: Sendable {
         holds[controlID] = nil
         inputs[controlID] = rest
         return append(kind: .input, controlID: controlID, encoding: control.encoding.rawValue, value: rest, disposition: .accepted,
-                      mappedValue: mappedValue, reason: Self.holdExpiredReason, origin: .remote, at: time, holdDeadline: nil)
+                      mappedValue: mappedValue, reason: Self.holdExpiredReason, origin: .remote, at: time, holdDeadline: nil, writerID: writerID)
     }
     public static let holdExpiredReason = "hold_expired"
     /// Observation only: this method never records a control input or changes its accepted value.
     @discardableResult public mutating func recordFeedback(_ update: ControlFeedback, disposition: ControlDisposition = .accepted,
-        reason: String? = nil, origin: InputOrigin, at time: Double) throws -> ControlEvent {
-        try validateFeedback(update, at: time)
+        reason: String? = nil, origin: InputOrigin, at time: Double, writerID: String? = nil) throws -> ControlEvent {
+        try validateFeedback(update, at: time, writerID: writerID)
         try validateResult(disposition, mappedValue: nil, reason: reason)
         let value = Self.normalized(update.value)
         let event = append(kind: .feedback, controlID: update.control_id, encoding: update.kind, value: value,
-                           disposition: disposition, mappedValue: nil, reason: reason, origin: origin, at: time, holdDeadline: nil)
+                           disposition: disposition, mappedValue: nil, reason: reason, origin: origin, at: time, holdDeadline: nil, writerID: writerID)
         if disposition == .accepted { feedback[update.control_id, default: [:]][update.kind] = value }
         return event
     }
     private mutating func append(kind: ControlEventKind, controlID: String, encoding: String, value: JSONValue,
-        disposition: ControlDisposition, mappedValue: JSONValue?, reason: String?, origin: InputOrigin, at time: Double, holdDeadline: Double?) -> ControlEvent {
+        disposition: ControlDisposition, mappedValue: JSONValue?, reason: String?, origin: InputOrigin, at time: Double, holdDeadline: Double?, writerID: String?) -> ControlEvent {
         sequence += 1
-        let event = ControlEvent(expected: expected, sequence: String(sequence), time: time, source: .simulation,
+        if kind == .input { inputSequence += 1 }
+        let event = ControlEvent(expected: expected, sequence: String(sequence), input_sequence: publicInputSequence, writer_id: writerID, time: time, source: .simulation,
                                  origin: origin, kind: kind, control_id: controlID, encoding: encoding, value: value,
                                  disposition: disposition, mapped_value: mappedValue.map(Self.normalized), reason: reason, hold_deadline: holdDeadline)
         records.append(event)
@@ -213,7 +242,7 @@ public struct SurfaceControlSession: Sendable {
               let cursor = UInt64(afterSequence), String(cursor) == afterSequence, limit > 0, limit <= 1024 else { throw ControlContractError("invalid_argument") }
         let first = records.first.flatMap { UInt64($0.sequence) } ?? sequence
         guard cursor <= sequence, !(cursor < first && first - cursor > 1) else { throw ControlContractError("event_gap") }
-        return .init(server_time: time, expected: expected, latest_sequence: String(sequence), events: Array(records.filter { UInt64($0.sequence)! > cursor }.prefix(limit)), holds: holds.isEmpty ? nil : holds)
+        return .init(server_time: time, expected: expected, latest_sequence: String(sequence), latest_input_sequence: publicInputSequence, events: Array(records.filter { UInt64($0.sequence)! > cursor }.prefix(limit)), holds: holds.isEmpty ? nil : holds)
     }
     /// Contract 1.1 convenience: uses the deterministic mapping revision of the new (or current) profile.
     public mutating func reset(expected old: ControlExpected, expectedSequence: String, epoch: String, profile: ControlProfile? = nil, at time: Double) throws {
@@ -229,7 +258,7 @@ public struct SurfaceControlSession: Sendable {
         try validateNoPendingExpiry(at: time)
         guard !epoch.isEmpty, epoch != expected.epoch else { throw ControlContractError("invalid_argument") }
         var next = try SurfaceControlSession(instanceID: expected.instance_id, epoch: epoch, mappingRevision: mappingRevision,
-                                             profile: profile ?? self.profile, eventCapacity: eventCapacity)
+                                             profile: profile ?? self.profile, eventCapacity: eventCapacity, writeLimits: writeLimits)
         next.lastTime = time
         self = next
     }

@@ -6,6 +6,9 @@ public struct RemoteToolDescriptor: Equatable, Codable, Sendable {
     public let inputSchema: JSONValue
     public let outputSchema: JSONValue
     public let isMutation: Bool
+    public init(name: String, inputSchema: JSONValue, output: JSONValue, isMutation: Bool) {
+        self.name = name; self.inputSchema = inputSchema; self.outputSchema = output; self.isMutation = isMutation
+    }
     /// `optional` names input fields that may be omitted; every other field is required.
     public init(name: String, fields: [String: JSONValue], optional: Set<String> = [], output: JSONValue, isMutation: Bool) {
         self.name = name; self.inputSchema = RemoteSchema.object(fields, optional: optional); self.outputSchema = output; self.isMutation = isMutation

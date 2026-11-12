@@ -231,6 +231,34 @@
                       "additionalProperties": {
                         "type": "number"
                       }
+                    },
+                    "latest_input_sequence": {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$"
+                    },
+                    "writer_kind": {
+                      "enum": [
+                        "remote",
+                        "interface",
+                        "system"
+                      ]
+                    },
+                    "event_input_sequences": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$"
+                      }
+                    },
+                    "event_writer_kinds": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "remote",
+                          "interface",
+                          "system"
+                        ]
+                      }
                     }
                   },
                   "required": [],
@@ -245,6 +273,10 @@
                   "type": "boolean"
                 },
                 "expected_sequence": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]*)$"
+                },
+                "expected_input_sequence": {
                   "type": "string",
                   "pattern": "^(0|[1-9][0-9]*)$"
                 }
@@ -273,8 +305,17 @@
       "enum": [
         "1.0",
         "1.1",
-        "1.2"
+        "1.2",
+        "1.3"
       ]
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
     }
   },
   "required": [

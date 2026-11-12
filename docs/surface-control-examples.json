@@ -1,0 +1,735 @@
+[
+  {
+    "arguments" : {
+
+    },
+    "result" : {
+      "contract_version" : "1.3",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "latest_input_sequence" : "0",
+      "latest_sequence" : "0",
+      "profile" : {
+        "capabilities" : [
+          "simulation",
+          "controls.stable_ids",
+          "input.absolute",
+          "input.button",
+          "input.hold",
+          "feedback.value",
+          "feedback.indicator",
+          "feedback.unsequenced",
+          "controls.input_declared",
+          "input.independent_sequence",
+          "events.writer_id",
+          "writes.independent_limits"
+        ],
+        "controls" : [
+          {
+            "accepts_input" : true,
+            "encoding" : "scalar",
+            "feedback_kinds" : [
+              "value",
+              "indicator"
+            ],
+            "id" : "dial.1",
+            "input_kind" : "absolute",
+            "mapping" : {
+              "id" : "example.input",
+              "kind" : "parameter"
+            },
+            "range" : {
+              "maximum" : 100,
+              "minimum" : 0,
+              "step" : 1
+            }
+          },
+          {
+            "accepts_input" : true,
+            "encoding" : "boolean",
+            "feedback_kinds" : [
+              "indicator"
+            ],
+            "hold" : {
+              "max_hold_s" : 2,
+              "rest_value" : false
+            },
+            "id" : "button.1",
+            "input_kind" : "button"
+          }
+        ],
+        "id" : "example.scalar",
+        "version" : "1.3"
+      },
+      "schema_version" : 1,
+      "source" : "simulation",
+      "write_limits" : {
+        "admin_per_window" : 5,
+        "feedback_per_window" : 20,
+        "input_per_window" : 60,
+        "renew_per_window" : 60,
+        "window_s" : 1
+      }
+    },
+    "tool" : "surface_control_discover"
+  },
+  {
+    "arguments" : {
+      "control_id" : "dial.1",
+      "encoding" : "scalar",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "expected_input_sequence" : "0",
+      "value" : 80
+    },
+    "result" : {
+      "control_id" : "dial.1",
+      "disposition" : "accepted",
+      "encoding" : "scalar",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "input_sequence" : "1",
+      "kind" : "input",
+      "mapped_value" : 0.8,
+      "origin" : "remote",
+      "sequence" : "1",
+      "source" : "simulation",
+      "time" : 1,
+      "value" : 80,
+      "writer_id" : "example.remote"
+    },
+    "tool" : "surface_control_input"
+  },
+  {
+    "arguments" : {
+      "control_id" : "button.1",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "expected_sequence" : "1",
+      "kind" : "indicator",
+      "value" : "on"
+    },
+    "result" : {
+      "control_id" : "button.1",
+      "disposition" : "accepted",
+      "encoding" : "indicator",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "input_sequence" : "1",
+      "kind" : "feedback",
+      "origin" : "remote",
+      "sequence" : "2",
+      "source" : "simulation",
+      "time" : 2,
+      "value" : "on",
+      "writer_id" : "example.remote"
+    },
+    "tool" : "surface_control_feedback"
+  },
+  {
+    "arguments" : {
+      "control_id" : "dial.1",
+      "encoding" : "scalar",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "expected_sequence" : "2",
+      "value" : 80
+    },
+    "result" : {
+      "control_id" : "dial.1",
+      "disposition" : "ignored",
+      "encoding" : "scalar",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "input_sequence" : "2",
+      "kind" : "input",
+      "origin" : "remote",
+      "reason" : "no_change",
+      "sequence" : "3",
+      "source" : "simulation",
+      "time" : 2,
+      "value" : 80,
+      "writer_id" : "example.remote"
+    },
+    "tool" : "surface_control_input"
+  },
+  {
+    "arguments" : {
+      "instance_id" : "example-instance"
+    },
+    "result" : {
+      "discovery" : {
+        "contract_version" : "1.3",
+        "expected" : {
+          "epoch" : "example-epoch",
+          "instance_id" : "example-instance",
+          "mapping_revision" : "8b7d0e4139b1c45c",
+          "profile_id" : "example.scalar",
+          "profile_version" : "1.3"
+        },
+        "latest_input_sequence" : "2",
+        "latest_sequence" : "3",
+        "profile" : {
+          "capabilities" : [
+            "simulation",
+            "controls.stable_ids",
+            "input.absolute",
+            "input.button",
+            "input.hold",
+            "feedback.value",
+            "feedback.indicator",
+            "feedback.unsequenced",
+            "controls.input_declared",
+            "input.independent_sequence",
+            "events.writer_id",
+            "writes.independent_limits"
+          ],
+          "controls" : [
+            {
+              "accepts_input" : true,
+              "encoding" : "scalar",
+              "feedback_kinds" : [
+                "value",
+                "indicator"
+              ],
+              "id" : "dial.1",
+              "input_kind" : "absolute",
+              "mapping" : {
+                "id" : "example.input",
+                "kind" : "parameter"
+              },
+              "range" : {
+                "maximum" : 100,
+                "minimum" : 0,
+                "step" : 1
+              }
+            },
+            {
+              "accepts_input" : true,
+              "encoding" : "boolean",
+              "feedback_kinds" : [
+                "indicator"
+              ],
+              "hold" : {
+                "max_hold_s" : 2,
+                "rest_value" : false
+              },
+              "id" : "button.1",
+              "input_kind" : "button"
+            }
+          ],
+          "id" : "example.scalar",
+          "version" : "1.3"
+        },
+        "schema_version" : 1,
+        "source" : "simulation",
+        "write_limits" : {
+          "admin_per_window" : 5,
+          "feedback_per_window" : 20,
+          "input_per_window" : 60,
+          "renew_per_window" : 60,
+          "window_s" : 1
+        }
+      },
+      "feedback" : {
+        "button.1" : {
+          "indicator" : "on"
+        }
+      },
+      "inputs" : {
+        "button.1" : false,
+        "dial.1" : 80
+      },
+      "latest_input_sequence" : "2",
+      "latest_sequence" : "3",
+      "server_time" : 2
+    },
+    "tool" : "surface_control_snapshot"
+  },
+  {
+    "arguments" : {
+      "after_sequence" : "0",
+      "epoch" : "example-epoch",
+      "instance_id" : "example-instance",
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "dial.1",
+          "disposition" : "accepted",
+          "encoding" : "scalar",
+          "expected" : {
+            "epoch" : "example-epoch",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "8b7d0e4139b1c45c",
+            "profile_id" : "example.scalar",
+            "profile_version" : "1.3"
+          },
+          "input_sequence" : "1",
+          "kind" : "input",
+          "mapped_value" : 0.8,
+          "origin" : "remote",
+          "sequence" : "1",
+          "source" : "simulation",
+          "time" : 1,
+          "value" : 80,
+          "writer_id" : "example.remote"
+        },
+        {
+          "control_id" : "button.1",
+          "disposition" : "accepted",
+          "encoding" : "indicator",
+          "expected" : {
+            "epoch" : "example-epoch",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "8b7d0e4139b1c45c",
+            "profile_id" : "example.scalar",
+            "profile_version" : "1.3"
+          },
+          "input_sequence" : "1",
+          "kind" : "feedback",
+          "origin" : "remote",
+          "sequence" : "2",
+          "source" : "simulation",
+          "time" : 2,
+          "value" : "on",
+          "writer_id" : "example.remote"
+        },
+        {
+          "control_id" : "dial.1",
+          "disposition" : "ignored",
+          "encoding" : "scalar",
+          "expected" : {
+            "epoch" : "example-epoch",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "8b7d0e4139b1c45c",
+            "profile_id" : "example.scalar",
+            "profile_version" : "1.3"
+          },
+          "input_sequence" : "2",
+          "kind" : "input",
+          "origin" : "remote",
+          "reason" : "no_change",
+          "sequence" : "3",
+          "source" : "simulation",
+          "time" : 2,
+          "value" : 80,
+          "writer_id" : "example.remote"
+        }
+      ],
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "latest_input_sequence" : "2",
+      "latest_sequence" : "3",
+      "server_time" : 2
+    },
+    "tool" : "surface_control_events"
+  },
+  {
+    "arguments" : {
+      "control_id" : "button.1",
+      "encoding" : "boolean",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "expected_sequence" : "3",
+      "hold_s" : 1,
+      "value" : true
+    },
+    "result" : {
+      "control_id" : "button.1",
+      "disposition" : "accepted",
+      "encoding" : "boolean",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "hold_deadline" : 4,
+      "input_sequence" : "3",
+      "kind" : "input",
+      "origin" : "remote",
+      "sequence" : "4",
+      "source" : "simulation",
+      "time" : 3,
+      "value" : true,
+      "writer_id" : "example.remote"
+    },
+    "tool" : "surface_control_input"
+  },
+  {
+    "arguments" : {
+      "control_id" : "button.1",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "hold_s" : 1
+    },
+    "result" : {
+      "control_id" : "button.1",
+      "hold_deadline" : 4.5,
+      "server_time" : 3.5
+    },
+    "tool" : "surface_control_renew"
+  },
+  {
+    "arguments" : {
+      "instance_id" : "example-instance"
+    },
+    "result" : {
+      "discovery" : {
+        "contract_version" : "1.3",
+        "expected" : {
+          "epoch" : "example-epoch",
+          "instance_id" : "example-instance",
+          "mapping_revision" : "8b7d0e4139b1c45c",
+          "profile_id" : "example.scalar",
+          "profile_version" : "1.3"
+        },
+        "latest_input_sequence" : "3",
+        "latest_sequence" : "4",
+        "profile" : {
+          "capabilities" : [
+            "simulation",
+            "controls.stable_ids",
+            "input.absolute",
+            "input.button",
+            "input.hold",
+            "feedback.value",
+            "feedback.indicator",
+            "feedback.unsequenced",
+            "controls.input_declared",
+            "input.independent_sequence",
+            "events.writer_id",
+            "writes.independent_limits"
+          ],
+          "controls" : [
+            {
+              "accepts_input" : true,
+              "encoding" : "scalar",
+              "feedback_kinds" : [
+                "value",
+                "indicator"
+              ],
+              "id" : "dial.1",
+              "input_kind" : "absolute",
+              "mapping" : {
+                "id" : "example.input",
+                "kind" : "parameter"
+              },
+              "range" : {
+                "maximum" : 100,
+                "minimum" : 0,
+                "step" : 1
+              }
+            },
+            {
+              "accepts_input" : true,
+              "encoding" : "boolean",
+              "feedback_kinds" : [
+                "indicator"
+              ],
+              "hold" : {
+                "max_hold_s" : 2,
+                "rest_value" : false
+              },
+              "id" : "button.1",
+              "input_kind" : "button"
+            }
+          ],
+          "id" : "example.scalar",
+          "version" : "1.3"
+        },
+        "schema_version" : 1,
+        "source" : "simulation",
+        "write_limits" : {
+          "admin_per_window" : 5,
+          "feedback_per_window" : 20,
+          "input_per_window" : 60,
+          "renew_per_window" : 60,
+          "window_s" : 1
+        }
+      },
+      "feedback" : {
+        "button.1" : {
+          "indicator" : "on"
+        }
+      },
+      "holds" : {
+        "button.1" : 4.5
+      },
+      "inputs" : {
+        "button.1" : true,
+        "dial.1" : 80
+      },
+      "latest_input_sequence" : "3",
+      "latest_sequence" : "4",
+      "server_time" : 4
+    },
+    "tool" : "surface_control_snapshot"
+  },
+  {
+    "arguments" : {
+      "after_sequence" : "4",
+      "epoch" : "example-epoch",
+      "instance_id" : "example-instance",
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+
+      ],
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "holds" : {
+        "button.1" : 4.5
+      },
+      "latest_input_sequence" : "3",
+      "latest_sequence" : "4",
+      "server_time" : 4
+    },
+    "tool" : "surface_control_events"
+  },
+  {
+    "arguments" : {
+      "after_sequence" : "3",
+      "epoch" : "example-epoch",
+      "instance_id" : "example-instance",
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "button.1",
+          "disposition" : "accepted",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "example-epoch",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "8b7d0e4139b1c45c",
+            "profile_id" : "example.scalar",
+            "profile_version" : "1.3"
+          },
+          "hold_deadline" : 4,
+          "input_sequence" : "3",
+          "kind" : "input",
+          "origin" : "remote",
+          "sequence" : "4",
+          "source" : "simulation",
+          "time" : 3,
+          "value" : true,
+          "writer_id" : "example.remote"
+        },
+        {
+          "control_id" : "button.1",
+          "disposition" : "accepted",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "example-epoch",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "8b7d0e4139b1c45c",
+            "profile_id" : "example.scalar",
+            "profile_version" : "1.3"
+          },
+          "input_sequence" : "4",
+          "kind" : "input",
+          "origin" : "remote",
+          "reason" : "hold_expired",
+          "sequence" : "5",
+          "source" : "simulation",
+          "time" : 4.5,
+          "value" : false,
+          "writer_id" : "example.system"
+        }
+      ],
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "latest_input_sequence" : "4",
+      "latest_sequence" : "5",
+      "server_time" : 4.5
+    },
+    "tool" : "surface_control_events"
+  },
+  {
+    "arguments" : {
+      "control_id" : "button.1",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "kind" : "indicator",
+      "value" : "off"
+    },
+    "result" : {
+      "control_id" : "button.1",
+      "disposition" : "accepted",
+      "encoding" : "indicator",
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "input_sequence" : "4",
+      "kind" : "feedback",
+      "origin" : "remote",
+      "sequence" : "6",
+      "source" : "simulation",
+      "time" : 5,
+      "value" : "off",
+      "writer_id" : "example.remote"
+    },
+    "tool" : "surface_control_feedback"
+  },
+  {
+    "arguments" : {
+      "expected" : {
+        "epoch" : "example-epoch",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "expected_sequence" : "6"
+    },
+    "result" : {
+      "contract_version" : "1.3",
+      "expected" : {
+        "epoch" : "example-reset",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "8b7d0e4139b1c45c",
+        "profile_id" : "example.scalar",
+        "profile_version" : "1.3"
+      },
+      "latest_input_sequence" : "0",
+      "latest_sequence" : "0",
+      "profile" : {
+        "capabilities" : [
+          "simulation",
+          "controls.stable_ids",
+          "input.absolute",
+          "input.button",
+          "input.hold",
+          "feedback.value",
+          "feedback.indicator",
+          "feedback.unsequenced",
+          "controls.input_declared",
+          "input.independent_sequence",
+          "events.writer_id",
+          "writes.independent_limits"
+        ],
+        "controls" : [
+          {
+            "accepts_input" : true,
+            "encoding" : "scalar",
+            "feedback_kinds" : [
+              "value",
+              "indicator"
+            ],
+            "id" : "dial.1",
+            "input_kind" : "absolute",
+            "mapping" : {
+              "id" : "example.input",
+              "kind" : "parameter"
+            },
+            "range" : {
+              "maximum" : 100,
+              "minimum" : 0,
+              "step" : 1
+            }
+          },
+          {
+            "accepts_input" : true,
+            "encoding" : "boolean",
+            "feedback_kinds" : [
+              "indicator"
+            ],
+            "hold" : {
+              "max_hold_s" : 2,
+              "rest_value" : false
+            },
+            "id" : "button.1",
+            "input_kind" : "button"
+          }
+        ],
+        "id" : "example.scalar",
+        "version" : "1.3"
+      },
+      "schema_version" : 1,
+      "source" : "simulation",
+      "write_limits" : {
+        "admin_per_window" : 5,
+        "feedback_per_window" : 20,
+        "input_per_window" : 60,
+        "renew_per_window" : 60,
+        "window_s" : 1
+      }
+    },
+    "tool" : "surface_control_reset"
+  }
+]

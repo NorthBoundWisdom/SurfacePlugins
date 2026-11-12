@@ -1,0 +1,1170 @@
+{
+  "schema_version": 1,
+  "scenario_id": "surface-control-software-v1.3",
+  "clock": "injected_monotonic",
+  "initial_time_s": 0,
+  "roles": {
+    "input_a": {
+      "input_kind": "absolute",
+      "encoding": "scalar"
+    },
+    "input_b": {
+      "input_kind": "absolute",
+      "encoding": "scalar"
+    },
+    "input_c": {
+      "input_kind": "absolute",
+      "encoding": "scalar"
+    },
+    "input_d": {
+      "input_kind": "absolute",
+      "encoding": "scalar"
+    },
+    "feedback_state": {
+      "feedback_kind": "indicator"
+    },
+    "feedback_progress": {
+      "feedback_kind": "value"
+    },
+    "feedback_link": {
+      "feedback_kind": "indicator"
+    },
+    "hold_input": {
+      "input_kind": "button",
+      "encoding": "boolean",
+      "hold": true
+    },
+    "blocked_input": {
+      "accepts_input": false
+    }
+  },
+  "scenarios": [
+    {
+      "id": "round_trip_and_fences",
+      "scope": "host",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0",
+            "known_inputs": {
+              "input_a": "minimum",
+              "input_b": "minimum",
+              "input_c": "minimum",
+              "input_d": "minimum"
+            },
+            "accepted_input_count": 0
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "replay_last_write",
+          "expect": {
+            "error": "stale_sequence",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.3,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "ignored",
+            "accepted_input_delta": 0
+          }
+        },
+        {
+          "at_s": 0.4,
+          "operation": "feedback",
+          "role": "feedback_state",
+          "value": "on",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 0,
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "feedback",
+          "role": "feedback_progress",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 0,
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "feedback",
+          "role": "feedback_link",
+          "value": "blink",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 0,
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 0.7,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.8,
+          "operation": "input",
+          "role": "input_b",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.9,
+          "operation": "input",
+          "role": "input_b",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 1.0,
+          "operation": "input",
+          "role": "input_c",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 1.1,
+          "operation": "input",
+          "role": "input_c",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 1.2,
+          "operation": "input",
+          "role": "input_d",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 1.3,
+          "operation": "input",
+          "role": "input_d",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 1.4,
+          "operation": "reset",
+          "expect": {
+            "epoch_changed": true,
+            "sequence": "0",
+            "accepted_input_count": 0
+          }
+        },
+        {
+          "at_s": 1.5,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expected_scope": "initial",
+          "expect": {
+            "error": "stale_epoch",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 1.6,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "encoding": "unknown-fixture-encoding",
+          "expect": {
+            "error": "unsupported_encoding",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 1.7,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0",
+            "known_inputs": {
+              "input_a": "minimum",
+              "input_b": "minimum",
+              "input_c": "minimum",
+              "input_d": "minimum"
+            },
+            "accepted_input_count": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "bounded_gap",
+      "scope": "host",
+      "event_capacity": 4,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.3,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.4,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.7,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "error": "event_gap",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.8,
+          "operation": "events",
+          "after_sequence": "2",
+          "expect": {
+            "event_count": 4,
+            "latest_sequence": "6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid_core_values_and_clock",
+      "scope": "inprocess",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted"
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "input",
+          "role": "input_b",
+          "invalid_value": "nan",
+          "expect": {
+            "error": "invalid_value",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.3,
+          "operation": "input",
+          "role": "input_b",
+          "value": "maximum",
+          "clock_override_s": 0.05,
+          "expect": {
+            "error": "invalid_time",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.4,
+          "operation": "reset",
+          "expect": {
+            "epoch_changed": true,
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "clock_override_s": 0.3,
+          "expect": {
+            "error": "invalid_time",
+            "atomic": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "instance_isolation",
+      "scope": "inprocess",
+      "instances": [
+        "a",
+        "b"
+      ],
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "instance": "a",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "instance": "b",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "instance": "a",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted"
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "snapshot",
+          "instance": "b",
+          "expect": {
+            "sequence": "0",
+            "known_inputs": {
+              "input_a": "minimum"
+            }
+          }
+        },
+        {
+          "at_s": 0.3,
+          "operation": "restart",
+          "instance": "a",
+          "expect": {
+            "instance_changed": true,
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.4,
+          "operation": "snapshot",
+          "instance": "b",
+          "expect": {
+            "sequence": "0",
+            "known_inputs": {
+              "input_a": "minimum"
+            }
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "input",
+          "instance": "a",
+          "role": "input_a",
+          "value": "maximum",
+          "expected_scope": "initial",
+          "expect": {
+            "error": "instance_mismatch",
+            "atomic": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "hold_lease_lifecycle",
+      "scope": "host",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0",
+            "known_inputs": {
+              "hold_input": "rest"
+            },
+            "holds": []
+          }
+        },
+        {
+          "at_s": 0.05,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "hold_s": 1,
+          "expect": {
+            "error": "unsupported_hold",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "hold_s": 1,
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1,
+            "hold_deadline_at_s": 1.1,
+            "latest_sequence": "1"
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "renew",
+          "role": "hold_input",
+          "hold_s": 1,
+          "expect": {
+            "hold_deadline_at_s": 1.5,
+            "latest_sequence": "1",
+            "accepted_input_delta": 0
+          }
+        },
+        {
+          "at_s": 1.4,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "1",
+            "holds": [
+              "hold_input"
+            ],
+            "known_inputs": {
+              "hold_input": "active"
+            }
+          }
+        },
+        {
+          "at_s": 1.5,
+          "operation": "advance",
+          "expect": {
+            "expired": [
+              "hold_input"
+            ],
+            "accepted_input_delta": 1,
+            "latest_sequence": "2",
+            "known_inputs": {
+              "hold_input": "rest"
+            },
+            "holds": []
+          }
+        },
+        {
+          "at_s": 1.6,
+          "operation": "events",
+          "after_sequence": "1",
+          "expect": {
+            "event_count": 1,
+            "event_reasons": [
+              "hold_expired"
+            ],
+            "latest_sequence": "2"
+          }
+        },
+        {
+          "at_s": 1.7,
+          "operation": "renew",
+          "role": "hold_input",
+          "hold_s": 1,
+          "expect": {
+            "error": "hold_expired",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 1.8,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "hold_s": 1,
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1,
+            "hold_deadline_at_s": 2.8
+          }
+        },
+        {
+          "at_s": 1.9,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "rest",
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1,
+            "holds": [],
+            "known_inputs": {
+              "hold_input": "rest"
+            }
+          }
+        },
+        {
+          "at_s": 2.0,
+          "operation": "renew",
+          "role": "hold_input",
+          "hold_s": 1,
+          "expect": {
+            "error": "hold_expired",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 2.1,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "hold_s": 1,
+          "expect": {
+            "disposition": "accepted",
+            "accepted_input_delta": 1,
+            "hold_deadline_at_s": 3.1
+          }
+        },
+        {
+          "at_s": 2.2,
+          "operation": "reset",
+          "expect": {
+            "epoch_changed": true,
+            "sequence": "0",
+            "holds": []
+          }
+        },
+        {
+          "at_s": 3.5,
+          "operation": "advance",
+          "expect": {
+            "expired": [],
+            "accepted_input_delta": 0,
+            "latest_sequence": "0"
+          }
+        },
+        {
+          "at_s": 3.6,
+          "operation": "renew",
+          "role": "hold_input",
+          "hold_s": 1,
+          "expect": {
+            "error": "hold_expired",
+            "atomic": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "hold_expiry_pending_fail_closed",
+      "scope": "inprocess",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "hold_s": 0.5,
+          "expect": {
+            "disposition": "accepted",
+            "hold_deadline_at_s": 0.6
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "snapshot",
+          "expect": {
+            "error": "hold_expiry_pending",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "error": "hold_expiry_pending",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "error": "hold_expiry_pending",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "feedback",
+          "role": "feedback_state",
+          "value": "on",
+          "expect": {
+            "error": "hold_expiry_pending",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "renew",
+          "role": "hold_input",
+          "hold_s": 1,
+          "expect": {
+            "error": "hold_expiry_pending",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "reset",
+          "expect": {
+            "error": "hold_expiry_pending",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.7,
+          "operation": "advance",
+          "expect": {
+            "expired": [
+              "hold_input"
+            ],
+            "accepted_input_delta": 1,
+            "latest_sequence": "2"
+          }
+        },
+        {
+          "at_s": 0.8,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "2",
+            "holds": [],
+            "known_inputs": {
+              "hold_input": "rest"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unsequenced_feedback_and_explicit_input_refresh",
+      "scope": "host",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "1",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "feedback",
+          "role": "feedback_state",
+          "value": "on",
+          "omit_sequence": true,
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "2",
+            "inputs_unchanged": true,
+            "accepted_input_delta": 0
+          }
+        },
+        {
+          "at_s": 0.3,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expected_sequence": "1",
+          "expect": {
+            "error": "stale_sequence",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.4,
+          "operation": "refresh_sequence",
+          "expect": {
+            "sequence": "2",
+            "known_inputs": {
+              "input_a": "maximum"
+            }
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "3",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "feedback",
+          "role": "feedback_link",
+          "value": "blink",
+          "omit_sequence": true,
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "4",
+            "inputs_unchanged": true,
+            "accepted_input_delta": 0
+          }
+        },
+        {
+          "at_s": 0.7,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "event_count": 4,
+            "latest_sequence": "4"
+          }
+        }
+      ]
+    },
+    {
+      "id": "event_page_current_holds",
+      "scope": "host",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "event_count": 0,
+            "holds": []
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "hold_s": 1,
+          "expect": {
+            "disposition": "accepted",
+            "hold_deadline_at_s": 1.1,
+            "latest_sequence": "1"
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "events",
+          "after_sequence": "1",
+          "expect": {
+            "event_count": 0,
+            "latest_sequence": "1",
+            "holds": [
+              "hold_input"
+            ],
+            "hold_deadlines_at_s": {
+              "hold_input": 1.1
+            }
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "renew",
+          "role": "hold_input",
+          "hold_s": 1,
+          "expect": {
+            "hold_deadline_at_s": 1.5,
+            "latest_sequence": "1",
+            "accepted_input_delta": 0
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "events",
+          "after_sequence": "1",
+          "expect": {
+            "event_count": 0,
+            "latest_sequence": "1",
+            "holds": [
+              "hold_input"
+            ],
+            "hold_deadlines_at_s": {
+              "hold_input": 1.5
+            }
+          }
+        },
+        {
+          "at_s": 1.5,
+          "operation": "advance",
+          "expect": {
+            "expired": [
+              "hold_input"
+            ],
+            "latest_sequence": "2",
+            "accepted_input_delta": 1
+          }
+        },
+        {
+          "at_s": 1.6,
+          "operation": "events",
+          "after_sequence": "1",
+          "expect": {
+            "event_count": 1,
+            "latest_sequence": "2",
+            "holds": [],
+            "hold_deadlines_at_s": {},
+            "event_reasons": [
+              "hold_expired"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "declared_read_only_control",
+      "scope": "host",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "blocked_input",
+          "value": "minimum",
+          "expect": {
+            "error": "permission_denied",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "event_count": 0,
+            "latest_sequence": "0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "independent_input_cas_and_trusted_writers",
+      "scope": "host",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "0",
+            "latest_input_sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.1,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expected_input_sequence": "0",
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "1",
+            "latest_input_sequence": "1",
+            "writer_kind": "remote"
+          }
+        },
+        {
+          "at_s": 0.2,
+          "operation": "feedback",
+          "role": "feedback_state",
+          "value": "on",
+          "omit_sequence": true,
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "2",
+            "latest_input_sequence": "1",
+            "writer_kind": "remote",
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 0.3,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expected_sequence": "1",
+          "expect": {
+            "error": "stale_sequence",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.4,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expected_input_sequence": "1",
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "3",
+            "latest_input_sequence": "2",
+            "writer_kind": "remote"
+          }
+        },
+        {
+          "at_s": 0.5,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expected_input_sequence": "1",
+          "expect": {
+            "error": "stale_input_sequence",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 0.6,
+          "operation": "input",
+          "role": "input_a",
+          "value": "minimum",
+          "expected_input_sequence": "2",
+          "expect": {
+            "disposition": "ignored",
+            "latest_sequence": "4",
+            "latest_input_sequence": "3",
+            "writer_kind": "remote"
+          }
+        },
+        {
+          "at_s": 0.7,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "event_count": 4,
+            "latest_sequence": "4",
+            "latest_input_sequence": "3",
+            "event_input_sequences": [
+              "1",
+              "1",
+              "2",
+              "3"
+            ],
+            "event_writer_kinds": [
+              "remote",
+              "remote",
+              "remote",
+              "remote"
+            ]
+          }
+        },
+        {
+          "at_s": 0.8,
+          "operation": "reset",
+          "expect": {
+            "epoch_changed": true,
+            "sequence": "0",
+            "latest_input_sequence": "0"
+          }
+        },
+        {
+          "at_s": 0.9,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "hold_s": 0.2,
+          "expected_input_sequence": "0",
+          "expect": {
+            "disposition": "accepted",
+            "latest_sequence": "1",
+            "latest_input_sequence": "1",
+            "writer_kind": "remote"
+          }
+        },
+        {
+          "at_s": 1.1,
+          "operation": "advance",
+          "expect": {
+            "expired": [
+              "hold_input"
+            ],
+            "latest_sequence": "2",
+            "latest_input_sequence": "2",
+            "known_inputs": {
+              "hold_input": "rest"
+            }
+          }
+        },
+        {
+          "at_s": 1.2,
+          "operation": "input",
+          "role": "hold_input",
+          "value": "active",
+          "expected_input_sequence": "1",
+          "expect": {
+            "error": "stale_input_sequence",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 1.3,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "event_count": 2,
+            "latest_sequence": "2",
+            "latest_input_sequence": "2",
+            "event_input_sequences": [
+              "1",
+              "2"
+            ],
+            "event_writer_kinds": [
+              "remote",
+              "system"
+            ]
+          }
+        },
+        {
+          "at_s": 1.4,
+          "operation": "snapshot",
+          "expect": {
+            "sequence": "2",
+            "latest_input_sequence": "2",
+            "holds": [],
+            "known_inputs": {
+              "hold_input": "rest"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "contract_version": "1.3",
+  "required_capabilities": [
+    "input.independent_sequence",
+    "events.writer_id"
+  ]
+}
