@@ -174,4 +174,15 @@ final class ControlTests: XCTestCase {
         let published = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: file))
         XCTAssertEqual(published.objectValue?["tools"], try .encoded(SurfaceControlTools.descriptors))
     }
+    func testMappedOutputRejectsNonScalarAndNonfiniteAtomically() throws {
+        var s = try session()
+        let before = try s.snapshot(at: 0)
+        for value in [JSONValue.object([:]), .array([]), .null, .double(.nan), .double(.infinity), .string("")] {
+            assertCode("invalid_result") { try s.recordInput(input(s), disposition: .accepted, mappedValue: value, origin: .remote, at: 0) }
+            XCTAssertEqual(try s.snapshot(at: 0), before)
+        }
+        for value in [JSONValue.number(1), .bool(true), .string("known")] {
+            try s.recordInput(input(s), disposition: .accepted, mappedValue: value, origin: .remote, at: 0)
+        }
+    }
 }

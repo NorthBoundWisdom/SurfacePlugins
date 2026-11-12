@@ -15,7 +15,8 @@ to consumer mappings. Unknown profiles or encodings never fall back to another p
 
 Inputs use `absolute/scalar`, `relative/signedDelta`, or `button/boolean`. The contract
 never rounds or clamps input. Numeric ranges include endpoints and use a zero-anchored
-step grid when a step is declared. Relative input expresses a delta, not an absolute
+step grid when a step is declared. Current host profiles use native integer grids; this
+release does not claim arbitrary decimal-step encodings. Relative input expresses a delta, not an absolute
 position. Feedback `value` uses `feedback_range` when declared, otherwise the input numeric range (or boolean for a button);
 `indicator` accepts `off`, `on`, or `blink`. Hosts render these values using their own
 motor, touch, layer, lamp, and ring rules.
@@ -29,7 +30,7 @@ configuration, mode, or any binding interpretation changes. Restart changes inst
 Hosts supply fresh opaque epochs; reusing a past identity is outside the contract.
 
 `surface_control_snapshot({instance_id})` returns discovery, a decimal `latest_sequence`,
-accepted raw input values, feedback values in separate dictionaries, and `server_time` from the injected current host clock. Event pages also contain `server_time`; consumers conservatively subtract server-side event age and local request elapsed time from their freshness budget. Pure reads never advance the commit clock. Empty initial
+initial Mock raw seeds and last accepted input values, feedback values in separate dictionaries, and `server_time` from the injected current host clock. These input values are not current motor positions or actual observations: a feedback display change never updates them. Event pages also contain `server_time`; consumers conservatively subtract server-side event age and local request elapsed time from their freshness budget. Pure reads never advance the commit clock. Empty initial
 input state is unknown; trusted hosts may call `seedInputs` once before the first event, using actual current Mock state and no event; it is not evidence that controls were observed off. Accepted events
 may include `mapped_value`, committed with the host parameter change. Ignored events require
 a stable reason and do not change accepted input/feedback state. Feedback produces a
@@ -67,3 +68,8 @@ codes at their public transport boundary and add their own permission/engine err
 Changes to required identity or input interpretation require a new contract major.
 Optional capabilities remain explicitly discovered. An older consumer must reject unknown
 profiles, versions, and encodings before submitting any input.
+
+`swift run surface-control-schema` emits the published descriptors.
+`swift run surface-control-schema --examples` emits real typed request/result examples
+for all six tools, including accepted and ignored inputs. Hosts package the generated
+schema; validation can use an external JSON Schema validator without a product dependency.

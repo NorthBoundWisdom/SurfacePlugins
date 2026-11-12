@@ -89,7 +89,7 @@ public struct SurfaceControlSession: Sendable {
         guard reason.map({ !$0.isEmpty && $0.utf8.count <= 128 }) ?? true,
               disposition != .ignored || reason != nil else { throw ControlContractError("invalid_result") }
         if let mappedValue {
-            guard mappedValue.finiteNumber != nil || mappedValue.boolValue != nil || mappedValue.stringValue != nil else { throw ControlContractError("invalid_result") }
+            guard mappedValue.finiteNumber != nil || mappedValue.boolValue != nil || mappedValue.stringValue.map({ !$0.isEmpty }) == true else { throw ControlContractError("invalid_result") }
         }
     }
     @discardableResult public mutating func recordInput(_ input: ControlInput, disposition: ControlDisposition,
