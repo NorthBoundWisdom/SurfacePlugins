@@ -38,7 +38,8 @@ Inside this package, product independence can be checked with
 `swift build --target SurfacePluginContracts` (no plugin gets compiled).
 
 The host owns parameter values and validates its write policy. ParameterDefinition validates
-both constructors and JSON decoding; defaultValue is required and may be clamped by the host.
+both constructors and JSON decoding; defaultValue is required and finite but may lie outside the range for old configurations.
+The host must clamp/canonicalize it before storing or applying it.
 `clamp` rejects nonfinite inputs; continuous grids use zero as anchor, include both endpoints,
 and resolve equal distances toward the lower value. Toggle selects its maximum at midpoint.
 
@@ -74,7 +75,9 @@ lease/generation/proof values. Each simulator requires an explicit, host-owned u
 `instanceID`; use a fresh host UUID per independent instance/session if no stable identity
 exists. The pure core derives deterministic generations within that namespace. Each acquire requires
 a fresh opaque `controlToken` supplied by the trusted host (for example a new host UUID),
-never by a remote request. Tokens cannot be reused within the same instance.
+never by a remote request. The core rejects reuse of the most recent 256 tokens in the current generation; generation
+changes clear that bounded guard. Global fresh opaque tokens remain the trusted host
+responsibility; the core does not promise unlimited historical reuse detection.
 The namespace is not a credential: transport authentication remains a host responsibility.
 `RobotPlugin` implements the semantic surface while its typed `simulator` exposes motion APIs.
 After a moving instance receives stop it remains started while braking, rejects new surface
@@ -93,3 +96,9 @@ and implementation for both hosts. See docs/remote-tools.md for operation schema
 trusted context, event gaps, and response-loss recovery. Registry owns the sole mutable value;
 clock, hardware and remote entry paths use that same instance. Agent localOrigins policy keeps
 hardware/UI approval available while rejecting remote approval.
+
+JSONValue.intValue is the legacy roundedIntValue alias (Double nearest integer, ties away
+from zero); it is retained without a deprecation warning for old provider behavior. New strict
+command parsing uses exactIntValue, which preserves number(Int) and rejects fractional or
+nonfinite Double values. The simulator event/catch-up limits and timed silent commit contract
+are documented in docs/remote-tools.md.

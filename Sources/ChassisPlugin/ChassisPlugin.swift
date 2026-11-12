@@ -10,7 +10,10 @@ public struct ChassisPlugin: ControlPlugin {
     private var stopping = false
     private var lastTime: Double?
     private var eventPolicy: SimulationEventPolicy
-    public init(deviceID: String = "chassis.reference", model: AckermannModel = .reference, instanceID: String, motionEventInterval: Double = 0.25) throws {
+    public let maxCatchUpGap: Double
+    public init(deviceID: String = "chassis.reference", model: AckermannModel = .reference, instanceID: String, motionEventInterval: Double = 0.25, maxCatchUpGap: Double = 2) throws {
+        guard maxCatchUpGap.isFinite, maxCatchUpGap > 0 else { throw PluginError(code: .invalidParameter) }
+        self.maxCatchUpGap = maxCatchUpGap
         simulator = try ChassisSimulator(deviceID: deviceID, model: model, instanceID: instanceID)
         eventPolicy = try .init(initial: Self.eventState(simulator.snapshot()), motionInterval: motionEventInterval)
     }
@@ -38,6 +41,10 @@ public struct ChassisPlugin: ControlPlugin {
         return .init(isStarted: started, indicators: ["chassis.state": .init(semantic: semantic)])
     }
     public mutating func handle(_ input: PluginInput, at time: PluginTime) throws -> PluginUpdate {
+        do { return try apply(input, at: time) }
+        catch let failure as SimulationError { throw failure.pluginError }
+    }
+    private mutating func apply(_ input: PluginInput, at time: PluginTime) throws -> PluginUpdate {
         guard time.isFinite, lastTime.map({ time >= $0 }) ?? true else { throw PluginError(code: .invalidTime) }
         var next = self
         switch input {
@@ -49,11 +56,18 @@ public struct ChassisPlugin: ControlPlugin {
             next.started = next.stopping
         case .advance:
             if let previous = lastTime, started {
-                let end = next.simulator.control.time + (time - previous)
-                guard end.isFinite else { throw PluginError(code: .invalidTime) }
-                while next.simulator.control.time < end {
-                    let dt = min(0.1, end - next.simulator.control.time)
-                    try next.advanceSimulation(dt)
+                let gap = time - previous
+                if gap > maxCatchUpGap {
+                    // Never integrate an unbounded host stall or invent post-stall movement.
+                    try next.simulator.fault("host_clock_gap", generation: next.simulator.control.generation)
+                    next.stopping = false
+                } else {
+                    let end = next.simulator.control.time + gap
+                    guard end.isFinite else { throw PluginError(code: .invalidTime) }
+                    while next.simulator.control.time < end {
+                        let dt = min(0.1, end - next.simulator.control.time)
+                        try next.advanceSimulation(dt)
+                    }
                 }
                 if next.stopping && next.simulator.snapshot().stopped { next.started = false; next.stopping = false }
             }

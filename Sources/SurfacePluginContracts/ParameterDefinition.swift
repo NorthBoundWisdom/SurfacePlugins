@@ -10,6 +10,8 @@ public struct ParameterDefinition: Equatable, Codable, Sendable {
     public let unit: String
     public let minimum: Double
     public let maximum: Double
+    /// Finite configured value; hosts must clamp/canonicalize before storing or applying it.
+    /// Out-of-range defaults remain decodable for legacy configuration compatibility.
     public let defaultValue: Double
     public let kind: ParameterKind
     public let agentWritable: Bool

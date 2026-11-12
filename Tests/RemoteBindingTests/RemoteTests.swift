@@ -381,3 +381,12 @@ final class ObjectOutputSchemaTests: XCTestCase {
         }
     }
 }
+
+final class DefaultInstanceIdentityTests: XCTestCase {
+    func testSharedDefaultInstanceIdentifiers() {
+        XCTAssertEqual(AgentRemoteBinding.defaultInstanceID, "agent.mock")
+        XCTAssertEqual(RobotRemoteBinding.defaultInstanceID, "robot.reference")
+        XCTAssertEqual(ChassisRemoteBinding.defaultInstanceID, "chassis.reference")
+        XCTAssertEqual(OutputRemoteBinding.defaultInstanceID, "output.parameters")
+    }
+}

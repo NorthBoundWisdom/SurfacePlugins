@@ -4,6 +4,7 @@ import RemoteToolContracts
 import AgentPlugin
 
 public struct AgentRemoteBinding: RemoteBinding {
+    public static let defaultInstanceID = "agent.mock"
     public let instanceID: String
     public var plugin: AgentPlugin
     public var surface: SurfaceDescriptor { plugin.surface }

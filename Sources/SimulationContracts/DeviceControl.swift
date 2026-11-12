@@ -7,6 +7,10 @@ public struct DeviceControl: Sendable {
     private let namespace: String
     private var generationCounter: UInt64 = 0
     private var usedTokens: Set<String> = []
+    private var tokenOrder: [String] = []
+    /// Bounded reuse detection, scoped to one generation. Trusted hosts ensure global freshness.
+    public static let recentTokenCapacity = 256
+    var retainedTokenCount: Int { tokenOrder.count }
     public private(set) var revision: UInt64 = 0
     public private(set) var time: Double = 0
     public private(set) var initialized = false
@@ -18,7 +22,7 @@ public struct DeviceControl: Sendable {
     private var token: String?
 
     public init(namespace: String) { self.namespace = namespace; generation = namespace + ".generation.0" }
-    private mutating func nextGeneration() -> String { generationCounter &+= 1; return namespace + ".generation.\(generationCounter)" }
+    private mutating func nextGeneration() -> String { generationCounter &+= 1; usedTokens.removeAll(keepingCapacity: true); tokenOrder.removeAll(keepingCapacity: true); return namespace + ".generation.\(generationCounter)" }
     public mutating func changed() { revision &+= 1 }
 
     public func checkGeneration(_ expected: String) throws {
@@ -49,7 +53,8 @@ public struct DeviceControl: Sendable {
         try SimulationValidation.require(token == nil, "busy", "simulation.control_is_already_owned")
         try SimulationValidation.require(!controlToken.isEmpty && controlToken.utf8.count <= 512 && !usedTokens.contains(controlToken), "invalid_argument", "simulation.invalid_control_token")
         let value = controlToken
-        usedTokens.insert(value)
+        usedTokens.insert(value); tokenOrder.append(value)
+        if tokenOrder.count > Self.recentTokenCapacity { usedTokens.remove(tokenOrder.removeFirst()) }
         self.owner = owner; expires = time + ttl; token = value; lastCommandSequence = 0; changed()
         return DeviceControlGrant(generation: generation, token: value, expires: time + ttl)
     }

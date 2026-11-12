@@ -5,6 +5,7 @@ import SimulationContracts
 import RobotPlugin
 
 public struct RobotRemoteBinding: RemoteBinding {
+    public static let defaultInstanceID = "robot.reference"
     public let instanceID: String
     public var plugin: RobotPlugin
     public var manifest: PluginManifest { plugin.manifest }

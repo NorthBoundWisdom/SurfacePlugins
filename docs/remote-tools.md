@@ -9,7 +9,7 @@ Registry installation accepts one binding or an array and commits atomically. Sa
 instances require identical manifest/surface/tool descriptors; all identifiers remain instance
 scoped. Different plugins cannot collide even through nested namespaces. Contract 1.0 is required.
 
-Initialize with `try RemoteRegistry(epoch: hostSessionUUID, eventCapacity: 256)`.
+Initialize with `try RemoteRegistry(epoch: hostSessionUUID, eventCapacity: 1024)`.
 `tools` includes capabilities/events and only installed plugin tools. Every descriptor contains
 explicit inputSchema/outputSchema/isMutation. Hosts register these descriptors with their
 transport and forward calls to the shared binding, without duplicating parsing or domain switches.
@@ -57,7 +57,7 @@ operations and read-only calls append nothing. Events contain operation codes or
 update codes, never control proofs/tokens. surface_events returns epoch/gap/events/latestSequence.
 A cursor older than retained history, from an old epoch, or beyond the newest sequence reports
 gap. Slow readers refetch snapshots. Reading events/snapshots never advances clock or replays
-inputs. Trusted typed replace commits canonical state and an event atomically. There is no eventless replacement API; trusted typed writes always provide time and event. Failed replacement
+inputs. Trusted typed replace commits canonical state, an explicit optional event, and the write clock atomically. There is no replacement API without time; pass event:nil only for bookkeeping or steady state. Failed replacement
 commits neither state nor journal. Identifier grammar is `[a-z][a-z0-9_-]*(\.[a-z0-9_-]+)*`
 with a complete match, as provided by RemoteRegistry.validIdentifier.
 
@@ -71,12 +71,6 @@ renew/release/move/drive/reset/stop reject with stopped. Snapshot and trace rema
 explicit simulation advance can finish braking and cannot restart the plugin. Both remote and
 surface stepping update the same lifecycle completion state. A host restart is explicit and
 does not restore old ownership or resume motion.
-
-Robot/chassis surface updates emit a stable `<plugin>.simulation.updated` event whenever the
-simulation control revision changes, including continuous active motion and hidden control
-revocation/braking. Event fields contain revision and simulated_time_s, never proof/token.
-Zero-time surface steps and completed-stop idle ticks emit no simulation event. This lets the
-shared registry expose clock-driven actual changes even when semantic indicators stay active.
 
 Pre-release event cadence update: `replace(binding, at: time, event: PluginEvent?)` requires
 explicit time and an explicit optional event. Pass nil for trusted bookkeeping/steady output;
@@ -97,3 +91,15 @@ events/second, leaving roughly two minutes plus a small command budget. Retentio
 `capacity / (4 * movingInstances + commandAndCriticalEventsPerSecond)` seconds; additional moving
 instances or commands shorten the window. Capacity remains configurable; increasing it is not a
 substitute for suppressing idle/steady bookkeeping. Clients must still handle gap and old epochs.
+
+Simulation wrappers accept maxCatchUpGap (default 2 seconds). A larger host advance injects
+host_clock_gap, revokes ownership and freezes the current pose instead of integrating the
+missing interval. The successful fault update reanchors host time; later small steps may
+advance the simulation clock but do not clear the fault or resume motion. Typed simulators
+retain existing fixed-step Provider algorithms. ControlPlugin handles always throw PluginError;
+typed SimulationError maps to fields.domainCode and fields.reasonKey at that boundary.
+
+Default instance constants are published independently on AgentRemoteBinding (agent.mock),
+RobotRemoteBinding (robot.reference), ChassisRemoteBinding (chassis.reference), and
+OutputRemoteBinding (output.parameters). Hosts use these same defaults; clients should still
+discover installed instances through surface_capabilities instead of assuming every plugin exists.

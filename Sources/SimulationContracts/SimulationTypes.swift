@@ -64,3 +64,19 @@ public enum SimulationValidation {
 
     public static func finite(_ values: [Double]) -> Bool { values.allSatisfy(\.isFinite) }
 }
+
+public extension SimulationError {
+    /// Typed simulators retain their domain errors; the generic plugin boundary is uniform.
+    var pluginError: PluginError {
+        let mapped: PluginErrorCode = switch code {
+        case "not_initialized": .notInitialized
+        case "stale_generation": .generationMismatch
+        case "control_expired": .ownershipExpired
+        case "invalid_control": .permissionDenied
+        case "unsupported": .unsupported
+        case "invalid_argument": .invalidParameter
+        default: .invalidTransition
+        }
+        return .init(code: mapped, fields: ["domainCode": .string(code), "reasonKey": .string(reasonKey)])
+    }
+}

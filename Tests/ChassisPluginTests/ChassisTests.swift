@@ -179,3 +179,25 @@ final class ChassisContractTests: XCTestCase {
         XCTAssertFalse(p.snapshot().isStarted); XCTAssertTrue(p.simulator.snapshot().stopped)
     }
 }
+
+final class ChassisClockGapTests: XCTestCase {
+    func testLargeGapFreezesAndRequiresExplicitFaultRecovery() throws {
+        var plugin = try ChassisPlugin(instanceID: "test")
+        _ = try plugin.handle(.start, at: 0)
+        try plugin.simulator.initialize([0,0,0], generation: plugin.simulator.control.generation)
+        let g = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "test", ttl: 5, controlToken: "secret")
+        try plugin.simulator.enable(.init(generation: g.generation, token: g.control_token, sequence: 1))
+        try plugin.simulator.drive(.init(generation: g.generation, token: g.control_token, sequence: 2), speed: 0.8, steering: 0.3, validFor: 2)
+        _ = try plugin.handle(.advance, at: 0.5)
+        let before = plugin.simulator.snapshot().actual?.pose_m_rad
+        _ = try plugin.handle(.advance, at: 100_000)
+        XCTAssertEqual(plugin.simulator.snapshot().actual?.pose_m_rad, before)
+        XCTAssertEqual(plugin.simulator.control.time, 0.5, accuracy: 1e-12)
+        XCTAssertEqual(plugin.simulator.control.fault, "host_clock_gap")
+        XCTAssertNil(plugin.simulator.control.owner); XCTAssertFalse(plugin.simulator.control.enabled)
+        _ = try plugin.handle(.advance, at: 100_000.1)
+        XCTAssertEqual(plugin.simulator.control.time, 0.6, accuracy: 1e-10)
+        XCTAssertEqual(plugin.simulator.control.fault, "host_clock_gap")
+        XCTAssertEqual(plugin.simulator.snapshot().actual?.pose_m_rad, before)
+    }
+}

@@ -71,13 +71,7 @@ public struct RemoteArguments: Sendable {
     public func string(_ key: String) throws -> String { guard let x = values[key]?.stringValue else { throw PluginError(code: .invalidParameter) }; return x }
     public func number(_ key: String) throws -> Double { guard let x = values[key]?.finiteNumber else { throw PluginError(code: .invalidParameter) }; return x }
     public func integer(_ key: String) throws -> Int { guard let value = values[key], let x = Self.exactInteger(value) else { throw PluginError(code: .invalidParameter) }; return x }
-    static func exactInteger(_ value: JSONValue) -> Int? {
-        switch value {
-        case let .number(number): number
-        case let .double(number): number.isFinite ? Int(exactly: number) : nil
-        default: nil
-        }
-    }
+    static func exactInteger(_ value: JSONValue) -> Int? { value.exactIntValue }
     public func numbers(_ key: String) throws -> [Double] {
         guard let xs = values[key]?.arrayValue else { throw PluginError(code: .invalidParameter) }
         return try xs.map { guard let n = $0.finiteNumber else { throw PluginError(code: .invalidParameter) }; return n }
@@ -131,7 +125,7 @@ public struct RemoteRegistry: Sendable {
     private func validateReplacement(_ binding: any RemoteBinding) throws {
         guard let old = bindings[binding.instanceID], old.manifest == binding.manifest, old.tools == binding.tools, old.surface == binding.surface else { throw PluginError(code: .generationMismatch) }
     }
-    /// Atomically commit one trusted typed operation and its observable event.
+    /// Atomically commit trusted typed state and an explicit optional event with a write clock.
     /// Event fields must never include tokens, credentials, or command proofs.
     public mutating func replace(_ binding: any RemoteBinding, at time: PluginTime, event: PluginEvent?) throws {
         try validateReplacement(binding)

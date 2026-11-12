@@ -4,6 +4,7 @@ import RemoteToolContracts
 import ParameterOutputPlugin
 
 public struct OutputRemoteBinding: RemoteBinding {
+    public static let defaultInstanceID = "output.parameters"
     public let instanceID: String
     public var plugin: ParameterOutputPlugin
     public var manifest: PluginManifest { plugin.manifest }

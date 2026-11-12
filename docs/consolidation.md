@@ -8,7 +8,8 @@ configuration, layout, bindings, device feedback, transports, credentials and ph
 
 One registry owns each live plugin instance. Its generic handle path serves clocks, hardware,
 UI and semantic actions; trusted typed writes commit both state and events atomically. There
-is no eventless replace API, hidden remote shadow, or implicit retry engine. Simulation stop
+is no untimed replace API, hidden remote shadow, or implicit retry engine. Explicit event:nil
+commits keep an independent monotonic write clock without filling history with bookkeeping. Simulation stop
 preserves pending braking and remote writes honor the same lifecycle. Actual and heartbeat
 remain authenticated host inputs, never motion-request echoes.
 

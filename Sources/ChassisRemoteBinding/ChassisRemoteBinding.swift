@@ -5,6 +5,7 @@ import SimulationContracts
 import ChassisPlugin
 
 public struct ChassisRemoteBinding: RemoteBinding {
+    public static let defaultInstanceID = "chassis.reference"
     public let instanceID: String
     public var plugin: ChassisPlugin
     public var manifest: PluginManifest { plugin.manifest }

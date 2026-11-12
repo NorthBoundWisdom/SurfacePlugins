@@ -44,3 +44,26 @@ final class ParameterTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(ParameterDefinition.self, from: JSONSerialization.data(withJSONObject: json)))
     }
 }
+
+final class ReviewContractTests: XCTestCase {
+    func testLegacyRoundedAndNewExactIntegerSemantics() {
+        XCTAssertEqual(JSONValue.double(1.6).intValue, 2)
+        XCTAssertEqual(JSONValue.double(-1.5).roundedIntValue, -2)
+        XCTAssertNil(JSONValue.double(1.6).exactIntValue)
+        for value in [Int.min, 9_007_199_254_740_993, Int.max] {
+            XCTAssertEqual(JSONValue.number(value).exactIntValue, value)
+            XCTAssertEqual(JSONValue.number(value).roundedIntValue, value)
+        }
+        XCTAssertEqual(JSONValue.double(2).exactIntValue, 2)
+        XCTAssertNil(JSONValue.double(.nan).exactIntValue)
+        XCTAssertNil(JSONValue.double(.infinity).exactIntValue)
+    }
+    func testLegacyOutOfRangeDefaultsRemainDecodableAndHostCanonicalizes() throws {
+        let definition = try ParameterDefinition(id: "positive.value", nameKey: "positive.value", minimum: 10, maximum: 20, defaultValue: 0, step: 2)
+        let decoded = try JSONDecoder().decode(ParameterDefinition.self, from: JSONEncoder().encode(definition))
+        XCTAssertEqual(decoded.defaultValue, 0)
+        XCTAssertEqual(try decoded.clamp(decoded.defaultValue), 10)
+        let upper = try ParameterDefinition(id: "positive.value", nameKey: "positive.value", minimum: 10, maximum: 20, defaultValue: 999)
+        XCTAssertEqual(try upper.clamp(upper.defaultValue), 20)
+    }
+}

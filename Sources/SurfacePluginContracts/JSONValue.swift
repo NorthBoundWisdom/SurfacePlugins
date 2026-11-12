@@ -81,7 +81,11 @@ public indirect enum JSONValue: Equatable, Codable, Sendable {
         }
     }
 
-    public var intValue: Int? {
+    /// Legacy alias: Double values round to the nearest integer (ties away from zero).
+    /// Retained without deprecation for existing provider parsing semantics.
+    public var intValue: Int? { roundedIntValue }
+
+    public var roundedIntValue: Int? {
         switch self {
         case let .number(value):
             value
@@ -89,6 +93,15 @@ public indirect enum JSONValue: Equatable, Codable, Sendable {
             Int(exactly: value.rounded())
         default:
             nil
+        }
+    }
+
+    /// Exact numeric conversion for new command parsing; fractional/nonfinite values are rejected.
+    public var exactIntValue: Int? {
+        switch self {
+        case let .number(value): value
+        case let .double(value): value.isFinite ? Int(exactly: value) : nil
+        default: nil
         }
     }
 
