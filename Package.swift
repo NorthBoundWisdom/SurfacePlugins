@@ -2,7 +2,9 @@
 import PackageDescription
 let package = Package(
     name: "SurfacePlugins",
-    products: [.library(name: "SurfacePluginContracts", targets: ["SurfacePluginContracts"]),
+    products: [.library(name: "SurfaceControlContracts", targets: ["SurfaceControlContracts"]),
+               .executable(name: "surface-control-schema", targets: ["SurfaceControlSchema"]),
+               .library(name: "SurfacePluginContracts", targets: ["SurfacePluginContracts"]),
                .library(name: "SurfacePluginConformance", targets: ["SurfacePluginConformance"]),
                .library(name: "AgentPlugin", targets: ["AgentPlugin"]),
                .library(name: "SimulationContracts", targets: ["SimulationContracts"]),
@@ -16,6 +18,9 @@ let package = Package(
                .library(name: "ChassisRemoteBinding", targets: ["ChassisRemoteBinding"]),
                .library(name: "OutputRemoteBinding", targets: ["OutputRemoteBinding"])],
     targets: [
+              .target(name: "SurfaceControlContracts", dependencies: ["SurfacePluginContracts", "RemoteToolContracts"]),
+              .executableTarget(name: "SurfaceControlSchema", dependencies: ["SurfaceControlContracts", "SurfacePluginContracts"]),
+              .testTarget(name: "SurfaceControlContractsTests", dependencies: ["SurfaceControlContracts"]),
               .target(name: "RemoteToolContracts", dependencies: ["SurfacePluginContracts"]),
               .target(name: "AgentRemoteBinding", dependencies: ["SurfacePluginContracts", "RemoteToolContracts", "AgentPlugin"]),
               .target(name: "RobotRemoteBinding", dependencies: ["SurfacePluginContracts", "RemoteToolContracts", "SimulationContracts", "RobotPlugin"]),

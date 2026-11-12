@@ -1,0 +1,1262 @@
+{
+  "contract_version" : "1.0",
+  "schema_version" : 1,
+  "tools" : [
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+
+        },
+        "required" : [
+
+        ],
+        "type" : "object"
+      },
+      "isMutation" : false,
+      "name" : "surface_control_discover",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "contract_version" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "latest_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "profile" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "capabilities" : {
+                "items" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "controls" : {
+                "items" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "encoding" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "feedback_kinds" : {
+                      "items" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "feedback_range" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "maximum" : {
+                          "type" : "number"
+                        },
+                        "minimum" : {
+                          "type" : "number"
+                        },
+                        "step" : {
+                          "type" : "number"
+                        }
+                      },
+                      "required" : [
+                        "maximum",
+                        "minimum"
+                      ],
+                      "type" : "object"
+                    },
+                    "id" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "input_kind" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "mapping" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "id" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "kind" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [
+                        "id",
+                        "kind"
+                      ],
+                      "type" : "object"
+                    },
+                    "range" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "maximum" : {
+                          "type" : "number"
+                        },
+                        "minimum" : {
+                          "type" : "number"
+                        },
+                        "step" : {
+                          "type" : "number"
+                        }
+                      },
+                      "required" : [
+                        "maximum",
+                        "minimum"
+                      ],
+                      "type" : "object"
+                    }
+                  },
+                  "required" : [
+                    "encoding",
+                    "feedback_kinds",
+                    "id",
+                    "input_kind"
+                  ],
+                  "type" : "object"
+                },
+                "type" : "array"
+              },
+              "id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "capabilities",
+              "controls",
+              "id",
+              "version"
+            ],
+            "type" : "object"
+          },
+          "schema_version" : {
+            "type" : "integer"
+          },
+          "source" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "contract_version",
+          "expected",
+          "latest_sequence",
+          "profile",
+          "schema_version",
+          "source"
+        ],
+        "type" : "object"
+      }
+    },
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "instance_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "instance_id"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : false,
+      "name" : "surface_control_snapshot",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "discovery" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "contract_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "expected" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "epoch" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "instance_id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "mapping_revision" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "profile_id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "profile_version" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [
+                  "epoch",
+                  "instance_id",
+                  "mapping_revision",
+                  "profile_id",
+                  "profile_version"
+                ],
+                "type" : "object"
+              },
+              "latest_sequence" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "capabilities" : {
+                    "items" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "type" : "array"
+                  },
+                  "controls" : {
+                    "items" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "encoding" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "feedback_kinds" : {
+                          "items" : {
+                            "minLength" : 1,
+                            "type" : "string"
+                          },
+                          "type" : "array"
+                        },
+                        "feedback_range" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "maximum" : {
+                              "type" : "number"
+                            },
+                            "minimum" : {
+                              "type" : "number"
+                            },
+                            "step" : {
+                              "type" : "number"
+                            }
+                          },
+                          "required" : [
+                            "maximum",
+                            "minimum"
+                          ],
+                          "type" : "object"
+                        },
+                        "id" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "input_kind" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "mapping" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "id" : {
+                              "minLength" : 1,
+                              "type" : "string"
+                            },
+                            "kind" : {
+                              "minLength" : 1,
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [
+                            "id",
+                            "kind"
+                          ],
+                          "type" : "object"
+                        },
+                        "range" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "maximum" : {
+                              "type" : "number"
+                            },
+                            "minimum" : {
+                              "type" : "number"
+                            },
+                            "step" : {
+                              "type" : "number"
+                            }
+                          },
+                          "required" : [
+                            "maximum",
+                            "minimum"
+                          ],
+                          "type" : "object"
+                        }
+                      },
+                      "required" : [
+                        "encoding",
+                        "feedback_kinds",
+                        "id",
+                        "input_kind"
+                      ],
+                      "type" : "object"
+                    },
+                    "type" : "array"
+                  },
+                  "id" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "version" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [
+                  "capabilities",
+                  "controls",
+                  "id",
+                  "version"
+                ],
+                "type" : "object"
+              },
+              "schema_version" : {
+                "type" : "integer"
+              },
+              "source" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "contract_version",
+              "expected",
+              "latest_sequence",
+              "profile",
+              "schema_version",
+              "source"
+            ],
+            "type" : "object"
+          },
+          "feedback" : {
+            "additionalProperties" : {
+              "additionalProperties" : {
+                "anyOf" : [
+                  {
+                    "type" : "number"
+                  },
+                  {
+                    "type" : "boolean"
+                  },
+                  {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                ]
+              },
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "inputs" : {
+            "additionalProperties" : {
+              "anyOf" : [
+                {
+                  "type" : "number"
+                },
+                {
+                  "type" : "boolean"
+                },
+                {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              ]
+            },
+            "type" : "object"
+          },
+          "latest_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "server_time" : {
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "discovery",
+          "feedback",
+          "inputs",
+          "latest_sequence",
+          "server_time"
+        ],
+        "type" : "object"
+      }
+    },
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "control_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "encoding" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "expected_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "value" : {
+            "anyOf" : [
+              {
+                "type" : "number"
+              },
+              {
+                "type" : "boolean"
+              },
+              {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            ]
+          }
+        },
+        "required" : [
+          "control_id",
+          "encoding",
+          "expected",
+          "expected_sequence",
+          "value"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : true,
+      "name" : "surface_control_input",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "control_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "disposition" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "encoding" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "kind" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "mapped_value" : {
+            "anyOf" : [
+              {
+                "type" : "number"
+              },
+              {
+                "type" : "boolean"
+              },
+              {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            ]
+          },
+          "origin" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "reason" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "source" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "time" : {
+            "type" : "number"
+          },
+          "value" : {
+            "anyOf" : [
+              {
+                "type" : "number"
+              },
+              {
+                "type" : "boolean"
+              },
+              {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            ]
+          }
+        },
+        "required" : [
+          "control_id",
+          "disposition",
+          "encoding",
+          "expected",
+          "kind",
+          "origin",
+          "sequence",
+          "source",
+          "time",
+          "value"
+        ],
+        "type" : "object"
+      }
+    },
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "control_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "expected_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "kind" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "value" : {
+            "anyOf" : [
+              {
+                "type" : "number"
+              },
+              {
+                "type" : "boolean"
+              },
+              {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            ]
+          }
+        },
+        "required" : [
+          "control_id",
+          "expected",
+          "expected_sequence",
+          "kind",
+          "value"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : true,
+      "name" : "surface_control_feedback",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "control_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "disposition" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "encoding" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "kind" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "mapped_value" : {
+            "anyOf" : [
+              {
+                "type" : "number"
+              },
+              {
+                "type" : "boolean"
+              },
+              {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            ]
+          },
+          "origin" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "reason" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "source" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "time" : {
+            "type" : "number"
+          },
+          "value" : {
+            "anyOf" : [
+              {
+                "type" : "number"
+              },
+              {
+                "type" : "boolean"
+              },
+              {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            ]
+          }
+        },
+        "required" : [
+          "control_id",
+          "disposition",
+          "encoding",
+          "expected",
+          "kind",
+          "origin",
+          "sequence",
+          "source",
+          "time",
+          "value"
+        ],
+        "type" : "object"
+      }
+    },
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "after_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "epoch" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "instance_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "limit" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "after_sequence",
+          "epoch",
+          "instance_id",
+          "limit"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : false,
+      "name" : "surface_control_events",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "events" : {
+            "items" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "control_id" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "disposition" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "encoding" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "expected" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "epoch" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "instance_id" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "mapping_revision" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "profile_id" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "profile_version" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [
+                    "epoch",
+                    "instance_id",
+                    "mapping_revision",
+                    "profile_id",
+                    "profile_version"
+                  ],
+                  "type" : "object"
+                },
+                "kind" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "mapped_value" : {
+                  "anyOf" : [
+                    {
+                      "type" : "number"
+                    },
+                    {
+                      "type" : "boolean"
+                    },
+                    {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }
+                  ]
+                },
+                "origin" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "reason" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "sequence" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "source" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "time" : {
+                  "type" : "number"
+                },
+                "value" : {
+                  "anyOf" : [
+                    {
+                      "type" : "number"
+                    },
+                    {
+                      "type" : "boolean"
+                    },
+                    {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }
+                  ]
+                }
+              },
+              "required" : [
+                "control_id",
+                "disposition",
+                "encoding",
+                "expected",
+                "kind",
+                "origin",
+                "sequence",
+                "source",
+                "time",
+                "value"
+              ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "latest_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "server_time" : {
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "events",
+          "expected",
+          "latest_sequence",
+          "server_time"
+        ],
+        "type" : "object"
+      }
+    },
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "expected_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "expected",
+          "expected_sequence"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : true,
+      "name" : "surface_control_reset",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "contract_version" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "latest_sequence" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "profile" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "capabilities" : {
+                "items" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "type" : "array"
+              },
+              "controls" : {
+                "items" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "encoding" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "feedback_kinds" : {
+                      "items" : {
+                        "minLength" : 1,
+                        "type" : "string"
+                      },
+                      "type" : "array"
+                    },
+                    "feedback_range" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "maximum" : {
+                          "type" : "number"
+                        },
+                        "minimum" : {
+                          "type" : "number"
+                        },
+                        "step" : {
+                          "type" : "number"
+                        }
+                      },
+                      "required" : [
+                        "maximum",
+                        "minimum"
+                      ],
+                      "type" : "object"
+                    },
+                    "id" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "input_kind" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "mapping" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "id" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        },
+                        "kind" : {
+                          "minLength" : 1,
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [
+                        "id",
+                        "kind"
+                      ],
+                      "type" : "object"
+                    },
+                    "range" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "maximum" : {
+                          "type" : "number"
+                        },
+                        "minimum" : {
+                          "type" : "number"
+                        },
+                        "step" : {
+                          "type" : "number"
+                        }
+                      },
+                      "required" : [
+                        "maximum",
+                        "minimum"
+                      ],
+                      "type" : "object"
+                    }
+                  },
+                  "required" : [
+                    "encoding",
+                    "feedback_kinds",
+                    "id",
+                    "input_kind"
+                  ],
+                  "type" : "object"
+                },
+                "type" : "array"
+              },
+              "id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "capabilities",
+              "controls",
+              "id",
+              "version"
+            ],
+            "type" : "object"
+          },
+          "schema_version" : {
+            "type" : "integer"
+          },
+          "source" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "contract_version",
+          "expected",
+          "latest_sequence",
+          "profile",
+          "schema_version",
+          "source"
+        ],
+        "type" : "object"
+      }
+    }
+  ]
+}

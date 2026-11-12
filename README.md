@@ -1,5 +1,10 @@
 # SurfacePlugins
 
+The optional [simulation control contract](docs/surface-control.md) publishes stable control
+profiles, typed inputs, feedback, and an independent bounded journal through
+`SurfaceControlContracts`. Its [public tool schemas](docs/surface-control-tools.json) are
+generated with `swift run surface-control-schema`; hosts package the same descriptors.
+
 Foundation-only Swift 6 value-state plugins. Each product can be imported independently;
 there is no umbrella product. Production plugins depend on SurfacePluginContracts and, for device simulations, the
 Foundation-only SimulationContracts utility. Plugins never import one another.
