@@ -105,6 +105,9 @@ class Runner:
         for event in page["events"]:
             row = self.controls.get(event["control_id"])
             check(row is not None, "journal references unknown control")
+            if "hold_deadline" in event:
+                check(event["kind"] == "input" and "input.hold" in self.client.profile.get("capabilities", []) and "hold" in row, "event hold capability or control absent")
+                check(event["hold_deadline"] > event["time"], "invalid event hold deadline")
             if event["kind"] == "input":
                 check(event.get("encoding") == row["encoding"] and admits(row, event.get("value")), "invalid journal input value or encoding")
             else:

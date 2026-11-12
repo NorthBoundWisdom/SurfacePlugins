@@ -209,7 +209,7 @@ class ConformanceTests(unittest.TestCase):
                      lambda e: e.update(input_sequence="0"), lambda e: e.pop("writer_id"),
                      lambda e: e.update(writer_id="invalid id"), lambda e: e.update(control_id="missing"),
                      lambda e: e.update(encoding="boolean"), lambda e: e.update(origin="hardware"),
-                     lambda e: e.update(time=float("nan"))]
+                     lambda e: e.update(time=float("nan")), lambda e: e.update(hold_deadline=2)]
         for mutate in mutations:
             host = MemoryHost()
             original = host.call
