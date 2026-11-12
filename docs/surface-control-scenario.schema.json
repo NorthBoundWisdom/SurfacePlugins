@@ -40,6 +40,9 @@
               "value",
               "indicator"
             ]
+          },
+          "hold": {
+            "type": "boolean"
           }
         },
         "required": [],
@@ -92,7 +95,9 @@
                     "replay_last_write",
                     "reset",
                     "events",
-                    "restart"
+                    "restart",
+                    "advance",
+                    "renew"
                   ]
                 },
                 "instance": {
@@ -109,7 +114,9 @@
                     "maximum",
                     "off",
                     "on",
-                    "blink"
+                    "blink",
+                    "rest",
+                    "active"
                   ]
                 },
                 "invalid_value": {
@@ -183,13 +190,46 @@
                       "additionalProperties": {
                         "enum": [
                           "minimum",
-                          "maximum"
+                          "maximum",
+                          "rest",
+                          "active"
                         ]
+                      }
+                    },
+                    "hold_deadline_at_s": {
+                      "type": "number"
+                    },
+                    "holds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "uniqueItems": true
+                    },
+                    "expired": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "uniqueItems": true
+                    },
+                    "event_reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
                       }
                     }
                   },
                   "required": [],
                   "additionalProperties": false
+                },
+                "hold_s": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 10
                 }
               },
               "required": [
@@ -211,6 +251,12 @@
         "additionalProperties": false
       },
       "minItems": 1
+    },
+    "contract_version": {
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
     }
   },
   "required": [

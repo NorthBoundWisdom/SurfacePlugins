@@ -28,15 +28,28 @@ def main():
             if sample["tool"] == "surface_control_input"} == {"accepted", "ignored"}
     scenario_schema = json.loads((root / "docs/surface-control-scenario.schema.json").read_text())
     Draft202012Validator.check_schema(scenario_schema)
-    fixture = json.loads((root / "fixtures/surface-control-software-v1.json").read_text())
-    Draft202012Validator(scenario_schema).validate(fixture)
-    for scenario in fixture["scenarios"]:
-        times = [step["at_s"] for step in scenario["steps"]]
-        assert times == sorted(times), f"Unordered scenario: {scenario['id']}"
+    assert any(sample["result"].get("hold_deadline") is not None for sample in examples
+               if sample["tool"] == "surface_control_input"), "Missing hold example"
+    assert any(event.get("reason") == "hold_expired" for sample in examples
+               if sample["tool"] == "surface_control_events" for event in sample["result"]["events"]), "Missing expiry example"
+    counts = {}
+    for name in ("surface-control-software-v1.json", "surface-control-software-v1.1.json"):
+        fixture = json.loads((root / "fixtures" / name).read_text())
+        Draft202012Validator(scenario_schema).validate(fixture)
+        for scenario in fixture["scenarios"]:
+            times = [step["at_s"] for step in scenario["steps"]]
+            assert times == sorted(times), f"Unordered scenario: {scenario['id']}"
+            for step in scenario["steps"]:
+                role = step.get("role")
+                assert role is None or role in fixture["roles"], f"Unknown role: {role}"
+                if "hold_s" in step or step["operation"] == "renew" or step.get("value") in ("rest", "active"):
+                    assert fixture.get("contract_version") == "1.1", f"1.1 step in 1.0 fixture: {scenario['id']}"
+        counts[name] = {"scenario_count": len(fixture["scenarios"]),
+                        "scenario_steps": sum(len(s["steps"]) for s in fixture["scenarios"])}
+    operations = {step["operation"] for scenario in fixture["scenarios"] for step in scenario["steps"]}
+    assert {"advance", "renew"} <= operations, "1.1 fixture lacks hold operations"
     print(json.dumps({"status": "pass", "schema_definitions": 2 * len(tools) + 1,
-                      "typed_request_result_examples": len(examples),
-                      "scenario_count": len(fixture["scenarios"]),
-                      "scenario_steps": sum(len(s["steps"]) for s in fixture["scenarios"])}))
+                      "typed_request_result_examples": len(examples), "fixtures": counts}))
 
 
 if __name__ == "__main__":

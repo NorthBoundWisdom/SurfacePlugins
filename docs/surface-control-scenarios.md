@@ -1,7 +1,12 @@
-# Reproducible host simulation scenarios, version 1
+# Reproducible host simulation scenarios, version 1 and 1.1
 
-The [fixture](../fixtures/surface-control-software-v1.json) is a neutral versioned test
-specification with a [JSON Schema](surface-control-scenario.schema.json). It drives a real
+The [1.0 fixture](../fixtures/surface-control-software-v1.json) and the
+[1.1 fixture](../fixtures/surface-control-software-v1.1.json) are neutral versioned test
+specifications with one shared [JSON Schema](surface-control-scenario.schema.json).
+The 1.0 file is kept byte-for-byte unchanged so existing host reports remain comparable. The 1.1
+file is a superset: it declares `contract_version: "1.1"`, repeats every 1.0 scenario unchanged,
+adds a `hold_input` role, and adds two lease scenarios. A host running contract 1.1 runs the 1.1
+file; `scenario_schema` stays 1 because every 1.0 document remains valid. It drives a real
 host Mock/session adapter using an injected monotonic clock. There is no second mapping or
 business engine in this package. Consumers map logical roles to their own stable control IDs;
 business meanings, tasks, authorization, and device models remain outside this fixture.
@@ -26,6 +31,21 @@ Operations have these runner meanings:
 | events | Read the control journal with current instance/epoch and the stated decimal cursor. |
 | reset | Use authorized simulation admin reset with current identity/CAS/time, rebuild actual Mock initial state, and bootstrap only known raw values. |
 | restart | Recreate only the named host instance with fresh instance identity and initial Mock state; other instances continue unchanged. |
+| renew (1.1) | Call `surface_control_renew` with current identity, the role's control, and `hold_s`. No sequence or event is expected. |
+| advance (1.1) | Move the injected clock to the step time and let the host process every due lease exactly as its own scheduler would: apply the rest value to the engine, then `recordHoldExpiry`. No public request is made. |
+
+Contract 1.1 additions. A role with `"hold": true` must map to a control whose descriptor has `hold`;
+the host seeds it at its rest value. Value `rest` means the descriptor's `hold.rest_value`; value `active`
+means one admissible non-rest input (for a button `true`; for a scalar the range endpoint that differs from
+rest). `hold_s` on an `input` step is sent as the request field. `hold_deadline_at_s` is the expected
+`hold_deadline` relative to `initial_time_s` (it equals step time plus `hold_s`) for an input event or a
+renew result. `holds` lists the roles with an active lease in the snapshot after the step; `[]` means none.
+`expired` lists the roles whose expiry events the `advance` step recorded, in order. `event_reasons` lists
+the `reason` of each returned event, in order. An expiry event counts toward `accepted_input_delta`: it is
+an accepted input with `origin: remote` and reason `hold_expired`. While a lease with deadline at or before
+the operation time is unprocessed, every read and write fails with `hold_expiry_pending`; the
+`hold_expiry_pending_fail_closed` scenario uses `scope: inprocess` because a real host scheduler would
+normally process the expiry first. Its `atomic` expectation includes the still-pending lease.
 
 `clock_override_s` and `invalid_value: nan` are in-process fault probes, not public tool fields.
 The runner constructs the nonfinite Swift value directly and injects clock override into the
@@ -64,6 +84,7 @@ swift run surface-control-schema --examples > /tmp/surface-control-examples.json
 python scripts/validate_surface_control_schemas.py --examples /tmp/surface-control-examples.json
 ```
 
-The validator checks published request/result schemas against actual typed examples and this
-fixture against its versioned scenario schema. Its JSON `pass` result means schema validation;
+The validator checks published request/result schemas against actual typed examples (including a
+lease, renewal, and `hold_expired` event) and both fixtures against the scenario schema; it also
+checks that 1.1-only steps never appear in the 1.0 fixture. Its JSON `pass` result means schema validation;
 host scenario execution results are separate.
