@@ -43,6 +43,9 @@
           },
           "hold": {
             "type": "boolean"
+          },
+          "accepts_input": {
+            "type": "boolean"
           }
         },
         "required": [],
@@ -97,7 +100,8 @@
                     "events",
                     "restart",
                     "advance",
-                    "renew"
+                    "renew",
+                    "refresh_sequence"
                   ]
                 },
                 "instance": {
@@ -221,6 +225,12 @@
                         "type": "string",
                         "minLength": 1
                       }
+                    },
+                    "hold_deadlines_at_s": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "number"
+                      }
                     }
                   },
                   "required": [],
@@ -230,6 +240,13 @@
                   "type": "number",
                   "exclusiveMinimum": 0,
                   "maximum": 10
+                },
+                "omit_sequence": {
+                  "type": "boolean"
+                },
+                "expected_sequence": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]*)$"
                 }
               },
               "required": [
@@ -255,7 +272,8 @@
     "contract_version": {
       "enum": [
         "1.0",
-        "1.1"
+        "1.1",
+        "1.2"
       ]
     }
   },

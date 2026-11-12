@@ -88,3 +88,33 @@ The validator checks published request/result schemas against actual typed examp
 lease, renewal, and `hold_expired` event) and both fixtures against the scenario schema; it also
 checks that 1.1-only steps never appear in the 1.0 fixture. Its JSON `pass` result means schema validation;
 host scenario execution results are separate.
+
+## Contract 1.2 fixture
+
+The [1.2 fixture](../fixtures/surface-control-software-v1.2.json) repeats every 1.1 scenario
+unchanged and adds three scenarios (9 scenarios, 83 steps total). Both older fixture files
+remain byte-for-byte unchanged. The scenario schema stays version 1 and accepts all three.
+
+New runner fields and operation:
+
+- `feedback.omit_sequence: true` omits `expected_sequence`; the feedback still consumes one
+  journal sequence. This path requires `feedback.unsequenced`. Ordinary feedback retains CAS.
+- `expected_sequence` on a step overrides the runner's current CAS with the given decimal.
+  It deliberately models an input writer whose last known sequence predates a feedback event.
+- `refresh_sequence` reads exactly one snapshot and updates only the runner's local CAS. It
+  submits no mutation; the next input is a new, explicitly chosen request. `stale_sequence`
+  proves the rejected input did not execute. Transport failure remains an unknown outcome.
+- `expect.holds` on an events operation checks that page's current lease set, independently
+  of which events the cursor returns. `hold_deadlines_at_s` checks the complete role-to-deadline
+  map relative to `initial_time_s`, including an empty map after expiry. Renewal changes this
+  map even when the page has zero events and an unchanged highwater.
+- Role `blocked_input` requires a descriptor with `accepts_input: false`. It imposes no
+  encoding: for this role `minimum` is `range.minimum` for a numeric control, or `false` for
+  a boolean control. Its input must fail with shared error `permission_denied`, atomically.
+  All other roles keep their previous constraints. Hosts declare `controls.input_declared`
+  and supply truthful `accepts_input` on every descriptor.
+
+The interleaving scenario serializes two logical writers at deterministic injected times:
+input commits, unsequenced feedback commits despite its writer's old local sequence, stale
+input is refused, then explicit refresh and a new input succeed. Separate host transport
+tests cover actual concurrent connections; fixture execution alone does not claim concurrency.
