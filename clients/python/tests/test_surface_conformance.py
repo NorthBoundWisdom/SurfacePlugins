@@ -110,6 +110,20 @@ class ConformanceTests(unittest.TestCase):
         report = run_fixture(host, raw, host.role_map)
         self.assertEqual(report["counts"], {"pass": 0, "fail": 1, "skip": 1})
 
+    def test_response_must_match_request_and_committed_journal(self):
+        host = MemoryHost()
+        original = host.call
+        def call(name, arguments=None):
+            result = original(name, arguments)
+            if name.endswith("input"):
+                result["control_id"] = "input_b"
+            return result
+        host.call = call
+        raw = fixture_bytes([{"id": "wrong-result", "steps": [{"operation": "input", "role": "input_a", "value": "maximum", "expect": {"disposition": "accepted"}}]}])
+        report = run_fixture(host, raw, host.role_map)
+        self.assertEqual(report["counts"], {"pass": 0, "fail": 1, "skip": 0})
+        self.assertEqual(report["steps"][0]["disposition"], "accepted")
+
     def test_unknown_transport_is_not_retried_and_tail_is_skipped(self):
         host = MemoryHost()
         host.failure = ("input", "transport_unknown")

@@ -19,7 +19,7 @@ def check(condition, message):
 
 def validate_roles(document, fixture, profile):
     check(isinstance(document, dict) and set(document) <= {"schema_version", "roles", "writer_ids"}, "invalid role map fields")
-    check(document.get("schema_version") == 1 and isinstance(document.get("roles"), dict), "invalid role map version")
+    check(type(document.get("schema_version")) is int and document["schema_version"] == 1 and isinstance(document.get("roles"), dict), "invalid role map version")
     roles = document["roles"]
     check(set(roles) <= set(fixture["roles"]), "unknown role")
     mapped = [v for v in roles.values() if v is not None]
@@ -145,6 +145,19 @@ class Runner:
         events = page["events"]
         count = lambda rows: sum(row.get("kind") == "input" and row.get("disposition") == "accepted" for row in rows)
         actual = {}
+        if error is None and step["operation"] in ("input", "feedback"):
+            arguments = self.last_write[1]
+            check(result.get("expected") == snap["discovery"]["expected"], "mutation identity differs from snapshot")
+            check(result.get("source") == "simulation" and result.get("origin") == "remote", "mutation source or origin differs")
+            check(result.get("kind") == step["operation"], "mutation kind differs")
+            for field in ("control_id", "value"):
+                check(result.get(field) == arguments[field], "mutation result differs from request: " + field)
+            check(result.get("encoding") == arguments.get("encoding", arguments.get("kind")), "mutation encoding differs")
+            check(any(row == result for row in events), "mutation response differs from committed journal event")
+        if error is None and step["operation"] == "reset":
+            check(result.get("expected") == snap["discovery"]["expected"], "reset response identity differs")
+            for field in ("instance_id", "mapping_revision", "profile_id", "profile_version"):
+                check(result["expected"].get(field) == prior["discovery"]["expected"].get(field), "reset changed profile or instance")
         for key, wanted in expect.items():
             if key == "error":
                 got = error
