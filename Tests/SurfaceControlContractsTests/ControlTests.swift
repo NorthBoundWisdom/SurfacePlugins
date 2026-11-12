@@ -8,7 +8,7 @@ final class ControlTests: XCTestCase {
             .init(id: "absolute.1", inputKind: .absolute, encoding: .scalar, range: .init(minimum: 0, maximum: 100, step: 1), feedbackKinds: [.value, .indicator], mapping: .init(kind: .parameter, id: "consumer.input")),
             .init(id: "relative.1", inputKind: .relative, encoding: .signedDelta, range: .init(minimum: -8, maximum: 8, step: 1)),
             .init(id: "button.1", inputKind: .button, encoding: .boolean, feedbackKinds: [.indicator])
-        ], capabilities: ["simulation", "input.absolute", "input.relative", "input.button"])
+        ], capabilities: ["simulation", "input.absolute", "input.relative", "input.button", "feedback.value", "feedback.indicator"])
     }
     func session(_ id: String = "fixture.alpha", capacity: Int = 1024) throws -> SurfaceControlSession {
         try .init(instanceID: "instance-A", epoch: "epoch-1", mappingRevision: "map-1", profile: profile(id), eventCapacity: capacity)
@@ -30,7 +30,7 @@ final class ControlTests: XCTestCase {
             XCTAssertEqual(x.source, .simulation); XCTAssertEqual(x.origin, .remote)
         }
         XCTAssertEqual(try a.snapshot(at: 100).inputs, try b.snapshot(at: 100).inputs)
-        XCTAssertEqual(a.discovery().contract_version, "1.0")
+        XCTAssertEqual(a.discovery().contract_version, "1.1")
         XCTAssertEqual(a.discovery().profile.id, "fixture.alpha")
     }
     func testInputEncodingAndValuesFailWithoutFallbackOrMutation() throws {
@@ -87,7 +87,9 @@ final class ControlTests: XCTestCase {
         XCTAssertEqual(try s.events(instanceID: "instance-A", epoch: "epoch-1", afterSequence: "1", limit: 1, at: 100).events.map(\.sequence), ["2"])
         try s.reset(expected: old, expectedSequence: "3", epoch: "epoch-2", mappingRevision: "map-2", at: 3)
         XCTAssertEqual(try s.snapshot(at: 100).latest_sequence, "0"); XCTAssertTrue(try s.snapshot(at: 100).inputs.isEmpty)
-        assertCode("stale_epoch") { try s.validateExpected(old) }
+        // Contract 1.1 checks mapping before epoch: the old identity carries both an old mapping and an old epoch.
+        assertCode("stale_mapping") { try s.validateExpected(old) }
+        assertCode("stale_epoch") { try s.validateExpected(.init(instanceID: "instance-A", epoch: "epoch-1", mappingRevision: "map-2", profileID: "fixture.alpha", profileVersion: "1")) }
         assertCode("stale_epoch") { _ = try s.events(instanceID: "instance-A", epoch: "epoch-1", afterSequence: "3", at: 100) }
         let before = try s.snapshot(at: 100)
         assertCode("invalid_argument") { try s.reset(expected: s.expected, expectedSequence: "0", epoch: "epoch-2", mappingRevision: "map-3", at: 3) }
@@ -116,7 +118,7 @@ final class ControlTests: XCTestCase {
         let events: JSONValue = .object(["instance_id": .string("instance-A"), "epoch": .string("epoch-1"), "after_sequence": .string("0"), "limit": .double(1.1)])
         assertCode("invalid_argument") { _ = try SurfaceControlTools.parse("surface_control_events", arguments: events) }
         assertCode("unsupported_tool") { _ = try SurfaceControlTools.parse("surface_unknown", arguments: .object([:])) }
-        XCTAssertEqual(Set(SurfaceControlTools.descriptors.map(\.name)).count, 6)
+        XCTAssertEqual(Set(SurfaceControlTools.descriptors.map(\.name)).count, 7)
     }
     func testProfileValidationRejectsDuplicateAndUnsupportedCombinations() throws {
         let control = profile().controls[0]
@@ -147,7 +149,7 @@ final class ControlTests: XCTestCase {
     func testRelativeFeedbackRangeAndHostBootstrapAreSeparateFromInput() throws {
         let p = ControlProfile(id: "fixture.delta", version: "1", controls: [
             .init(id: "dial", inputKind: .relative, encoding: .signedDelta, range: .init(minimum: -8, maximum: 8, step: 1),
-                  feedbackRange: .init(minimum: 0, maximum: 100, step: 1), feedbackKinds: [.value])])
+                  feedbackRange: .init(minimum: 0, maximum: 100, step: 1), feedbackKinds: [.value])], capabilities: ["input.relative", "feedback.value"])
         var s = try SurfaceControlSession(instanceID: "A", epoch: "e", mappingRevision: "m", profile: p)
         assertCode("invalid_value") { try s.seedInputs(["dial": .number(80)], at: 0) }
         try s.seedInputs(["dial": .number(0)], at: 0)

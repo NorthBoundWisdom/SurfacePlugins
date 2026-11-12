@@ -8,16 +8,17 @@ let schema: JSONValue
 if arguments.isEmpty {
     schema = .object([
     "schema_version": .number(1),
-    "contract_version": .string("1.0"),
+    "contract_version": .string(ControlDiscovery.contractVersion),
     "tools": try .encoded(SurfaceControlTools.descriptors)
     ])
 } else {
     let profile = ControlProfile(id: "example.scalar", version: "1", controls: [
         .init(id: "dial.1", inputKind: .absolute, encoding: .scalar, range: .init(minimum: 0, maximum: 100, step: 1),
               feedbackKinds: [.value, .indicator], mapping: .init(kind: .parameter, id: "example.input")),
-        .init(id: "button.1", inputKind: .button, encoding: .boolean, feedbackKinds: [.indicator])
-    ], capabilities: ["simulation", "input.absolute", "input.button"])
-    var session = try SurfaceControlSession(instanceID: "example-instance", epoch: "example-epoch", mappingRevision: "1", profile: profile)
+        .init(id: "button.1", inputKind: .button, encoding: .boolean, feedbackKinds: [.indicator],
+              hold: .init(restValue: .bool(false), maxHoldSeconds: 2))
+    ], capabilities: ["simulation", "controls.stable_ids", "input.absolute", "input.button", "input.hold", "feedback.value", "feedback.indicator"])
+    var session = try SurfaceControlSession(instanceID: "example-instance", epoch: "example-epoch", profile: profile)
     try session.seedInputs(["dial.1": .number(0), "button.1": .bool(false)], at: 0)
     var examples: [JSONValue] = []
     func sample<T: Encodable>(_ tool: String, _ arguments: JSONValue, _ result: T) throws -> JSONValue {
@@ -32,8 +33,16 @@ if arguments.isEmpty {
     examples.append(try sample("surface_control_input", .encoded(ignored), session.recordInput(ignored, disposition: .ignored, reason: "no_change", origin: .remote, at: 2)))
     examples.append(try sample("surface_control_snapshot", .object(["instance_id": .string("example-instance")]), session.snapshot(at: 2)))
     examples.append(try sample("surface_control_events", .object(["instance_id": .string("example-instance"), "epoch": .string("example-epoch"), "after_sequence": .string("0"), "limit": .number(128)]), session.events(instanceID: "example-instance", epoch: "example-epoch", afterSequence: "0", at: 2)))
-    let reset = JSONValue.object(["expected": try .encoded(session.expected), "expected_sequence": .string("3")])
-    try session.reset(expected: session.expected, expectedSequence: "3", epoch: "example-reset", mappingRevision: "1", at: 3)
+    // Contract 1.1 lease: acquire, renew silently, let it expire, then record the host's rest value.
+    let held = ControlInput(expected: session.expected, expectedSequence: "3", controlID: "button.1", encoding: "boolean", value: .bool(true), holdSeconds: 1)
+    examples.append(try sample("surface_control_input", .encoded(held), session.recordInput(held, disposition: .accepted, origin: .remote, at: 3)))
+    let renew = ControlRenew(expected: session.expected, controlID: "button.1", holdSeconds: 1)
+    examples.append(try sample("surface_control_renew", .encoded(renew), session.renew(renew, at: 3.5)))
+    examples.append(try sample("surface_control_snapshot", .object(["instance_id": .string("example-instance")]), session.snapshot(at: 4)))
+    for expiry in session.dueHoldExpiries(at: 4.5) { try session.recordHoldExpiry(controlID: expiry.controlID, at: 4.5) }
+    examples.append(try sample("surface_control_events", .object(["instance_id": .string("example-instance"), "epoch": .string("example-epoch"), "after_sequence": .string("3"), "limit": .number(128)]), session.events(instanceID: "example-instance", epoch: "example-epoch", afterSequence: "3", at: 4.5)))
+    let reset = JSONValue.object(["expected": try .encoded(session.expected), "expected_sequence": .string("5")])
+    try session.reset(expected: session.expected, expectedSequence: "5", epoch: "example-reset", at: 5)
     examples.append(try sample("surface_control_reset", reset, session.discovery()))
     schema = .array(examples)
 }

@@ -1,5 +1,5 @@
 {
-  "contract_version" : "1.0",
+  "contract_version" : "1.1",
   "schema_version" : 1,
   "tools" : [
     {
@@ -100,6 +100,33 @@
                       "required" : [
                         "maximum",
                         "minimum"
+                      ],
+                      "type" : "object"
+                    },
+                    "hold" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "max_hold_s" : {
+                          "type" : "number"
+                        },
+                        "rest_value" : {
+                          "anyOf" : [
+                            {
+                              "type" : "number"
+                            },
+                            {
+                              "type" : "boolean"
+                            },
+                            {
+                              "minLength" : 1,
+                              "type" : "string"
+                            }
+                          ]
+                        }
+                      },
+                      "required" : [
+                        "max_hold_s",
+                        "rest_value"
                       ],
                       "type" : "object"
                     },
@@ -302,6 +329,33 @@
                           ],
                           "type" : "object"
                         },
+                        "hold" : {
+                          "additionalProperties" : false,
+                          "properties" : {
+                            "max_hold_s" : {
+                              "type" : "number"
+                            },
+                            "rest_value" : {
+                              "anyOf" : [
+                                {
+                                  "type" : "number"
+                                },
+                                {
+                                  "type" : "boolean"
+                                },
+                                {
+                                  "minLength" : 1,
+                                  "type" : "string"
+                                }
+                              ]
+                            }
+                          },
+                          "required" : [
+                            "max_hold_s",
+                            "rest_value"
+                          ],
+                          "type" : "object"
+                        },
                         "id" : {
                           "minLength" : 1,
                           "type" : "string"
@@ -413,6 +467,12 @@
             },
             "type" : "object"
           },
+          "holds" : {
+            "additionalProperties" : {
+              "type" : "number"
+            },
+            "type" : "object"
+          },
           "inputs" : {
             "additionalProperties" : {
               "anyOf" : [
@@ -497,6 +557,9 @@
             "minLength" : 1,
             "type" : "string"
           },
+          "hold_s" : {
+            "type" : "number"
+          },
           "value" : {
             "anyOf" : [
               {
@@ -570,6 +633,9 @@
               "profile_version"
             ],
             "type" : "object"
+          },
+          "hold_deadline" : {
+            "type" : "number"
           },
           "kind" : {
             "minLength" : 1,
@@ -761,6 +827,9 @@
             ],
             "type" : "object"
           },
+          "hold_deadline" : {
+            "type" : "number"
+          },
           "kind" : {
             "minLength" : 1,
             "type" : "string"
@@ -909,6 +978,9 @@
                     "profile_version"
                   ],
                   "type" : "object"
+                },
+                "hold_deadline" : {
+                  "type" : "number"
                 },
                 "kind" : {
                   "minLength" : 1,
@@ -1166,6 +1238,33 @@
                       ],
                       "type" : "object"
                     },
+                    "hold" : {
+                      "additionalProperties" : false,
+                      "properties" : {
+                        "max_hold_s" : {
+                          "type" : "number"
+                        },
+                        "rest_value" : {
+                          "anyOf" : [
+                            {
+                              "type" : "number"
+                            },
+                            {
+                              "type" : "boolean"
+                            },
+                            {
+                              "minLength" : 1,
+                              "type" : "string"
+                            }
+                          ]
+                        }
+                      },
+                      "required" : [
+                        "max_hold_s",
+                        "rest_value"
+                      ],
+                      "type" : "object"
+                    },
                     "id" : {
                       "minLength" : 1,
                       "type" : "string"
@@ -1254,6 +1353,82 @@
           "profile",
           "schema_version",
           "source"
+        ],
+        "type" : "object"
+      }
+    },
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "control_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "hold_s" : {
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "control_id",
+          "expected",
+          "hold_s"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : true,
+      "name" : "surface_control_renew",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "control_id" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "hold_deadline" : {
+            "type" : "number"
+          },
+          "server_time" : {
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "control_id",
+          "hold_deadline",
+          "server_time"
         ],
         "type" : "object"
       }
