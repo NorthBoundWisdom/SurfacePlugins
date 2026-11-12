@@ -378,6 +378,45 @@ class V12Tests(unittest.TestCase):
         self.assertNotIn("expected_sequence", sent[0][1])
         self.assertEqual(len(sent), 1)
 
+    def test_unsequenced_jump_updates_input_cas_without_skipping_unread_events(self):
+        client = self.client()
+        events = EventCursor(client, clock=lambda: 1)
+        events.bootstrap(client.snapshot())
+        # Other writers commit after this reader bootstraps, before its feedback.
+        client.event("start", 127)
+        client.event("pause", 127)
+        original = client.call
+        writes = []
+
+        def call(name, arguments=None):
+            if name.endswith("feedback"):
+                self.assertNotIn("expected_sequence", arguments)
+                writes.append(name)
+                client.event("arm", "on", kind="feedback", encoding="indicator")
+                return copy.deepcopy(client.rows[-1])
+            if name.endswith("input"):
+                self.assertEqual(arguments["expected_sequence"], str(client.head))
+                writes.append(name)
+                client.event("arm", 127)
+                return copy.deepcopy(client.rows[-1])
+            return original(name, arguments)
+
+        client.call = call
+        self.assertEqual(client.feedback("arm", "indicator", "on")["sequence"], "3")
+        self.assertEqual(client.latest_sequence, "3")
+        self.assertEqual(events.sequence, 0)
+        self.assertEqual(client.input("arm", "scalar", 127)["sequence"], "4")
+        self.assertEqual(client.latest_sequence, "4")
+        self.assertEqual(events.sequence, 0)
+        entries = events.poll()
+        self.assertEqual([entry["event"]["sequence"] for entry in entries], ["1", "2", "3", "4"])
+        self.assertEqual([entry["event"]["control_id"] for entry in entries[:2]], ["start", "pause"])
+        self.assertEqual(client.calls[-1][1]["after_sequence"], "0")
+        self.assertEqual(events.sequence, 4)
+        self.assertEqual(client.latest_sequence, "4")
+        self.assertFalse(events.invalidated)
+        self.assertEqual(writes, ["surface_control_feedback", "surface_control_input"])
+
     def test_feedback_legacy_or_explicit_cas_keeps_exact_successor(self):
         for contract in ("1.0", "1.1", "1.2"):
             client = self.client(unsequenced=False) if contract == "1.2" else Fixture(contract)
