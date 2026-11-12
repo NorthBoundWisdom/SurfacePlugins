@@ -30,8 +30,8 @@ import time
 
 sys.dont_write_bytecode = True
 
-SDK_VERSION = "1.1.0"
-SUPPORTED_CONTRACTS = ("1.0", "1.1")
+SDK_VERSIONS = ("1.1.0", "1.2.0")
+SUPPORTED_CONTRACTS = ("1.0", "1.1", "1.2")
 # Consumer-side mapping: these parameter targets are Pipe trial roles, not shared contract names.
 ROLE_TARGETS = {name: "simulation." + name for name in ("arm", "start", "pause", "cancel")}
 FEEDBACK_TARGETS = ("simulation.state", "simulation.progress", "simulation.link")
@@ -145,8 +145,12 @@ def delivery(root, expected):
     require(digest(manifest_path) == expected, "artifact manifest pin mismatch")
     manifest = json.loads(manifest_path.read_text())
     require(
-        manifest.get("surface_control_contract") in SUPPORTED_CONTRACTS
-        and manifest.get("surface_control_sdk") == SDK_VERSION,
+        type(manifest.get("schema_version")) is int
+        and manifest["schema_version"] == 1
+        and manifest.get("source") == "simulation"
+        and manifest.get("source_dirty") is False
+        and manifest.get("surface_control_contract") in SUPPORTED_CONTRACTS
+        and manifest.get("surface_control_sdk") in SDK_VERSIONS,
         "unsupported optional Surface delivery",
     )
     for name, wanted in manifest["files_sha256"].items():
@@ -160,13 +164,14 @@ def delivery(root, expected):
             and digest(path) == wanted,
             "artifact file hash/path mismatch",
         )
-    sdk = root / ("surface-control-sdk-" + SDK_VERSION + ".zip")
+    sdk_version = manifest["surface_control_sdk"]
+    sdk = root / ("surface-control-sdk-" + sdk_version + ".zip")
     require(sdk.name in manifest["files_sha256"], "Surface SDK is not in manifest")
     require("surface_control" not in sys.modules, "another Surface SDK is already loaded")
     sys.path.insert(0, str(sdk))
     module = importlib.import_module("surface_control")
     require(str(module.__file__).startswith(str(sdk) + "/"), "SDK import is not from pinned artifact")
-    require(getattr(module, "__version__", None) == SDK_VERSION, "SDK version mismatch")
+    require(getattr(module, "__version__", None) == sdk_version, "SDK version mismatch")
     return module, manifest
 
 

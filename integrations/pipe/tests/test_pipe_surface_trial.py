@@ -9,6 +9,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+import zipfile
 from unittest.mock import patch
 
 SOURCE = Path(__file__).resolve().parents[1] / "pipe_surface_trial.py"
@@ -300,6 +301,77 @@ class PipeTrialTests(unittest.TestCase):
         self.assertEqual([call for call in sdk.calls if call[0] in ("reset", "input", "feedback")], [])
         self.assertEqual(list(output.iterdir()), [])
         self.assertNotIn(("prepare", "JsonHTTP"), sys.modules["pipe_bcr_provider.controller.bridge"].LOG)
+
+
+class DeliveryTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("surface_delivery_under_test", SOURCE)
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name).resolve()
+        self.path = list(sys.path)
+        self.saved_sdk = sys.modules.pop("surface_control", None)
+        self.addCleanup(self.cleanup)
+
+    def cleanup(self):
+        sys.path[:] = self.path
+        sys.modules.pop("surface_control", None)
+        if self.saved_sdk is not None:
+            sys.modules["surface_control"] = self.saved_sdk
+        self.temporary.cleanup()
+
+    def artifact(self, **fields):
+        sdk_version = fields.get("surface_control_sdk", "1.1.0")
+        sdk = self.root / ("surface-control-sdk-" + sdk_version + ".zip")
+        with zipfile.ZipFile(sdk, "w") as archive:
+            archive.writestr("surface_control/__init__.py", '__version__ = "' + sdk_version + '"')
+        contract = self.root / "control-contract.json"
+        contract.write_text("{}")
+        manifest = {"schema_version": 1, "source": "simulation", "source_dirty": False,
+                    "surface_control_contract": "1.1", "surface_control_sdk": "1.1.0",
+                    "files_sha256": {sdk.name: self.module.digest(sdk), contract.name: self.module.digest(contract)},
+                    **fields}
+        (self.root / "manifest.json").write_text(json.dumps(manifest))
+        return self.module.digest(self.root / "manifest.json")
+
+    def test_common_manifest_accepts_both_sdk_generations_and_private_provider_fields(self):
+        for contract, sdk_version in (("1.1", "1.1.0"), ("1.2", "1.2.0")):
+            sys.modules.pop("surface_control", None)
+            pin = self.artifact(surface_control_contract=contract, surface_control_sdk=sdk_version,
+                                provider_version="1.0", provider_contract="private")
+            sdk, manifest = self.module.delivery(self.root, pin)
+            self.assertEqual(sdk.__version__, sdk_version)
+            self.assertEqual(manifest["surface_control_contract"], contract)
+
+    def test_common_manifest_fields_reject_before_sdk_import(self):
+        for key, values in (("schema_version", (None, True, "1", 2)),
+                            ("source", (None, "hardware", "mock")),
+                            ("source_dirty", (None, True, 0, "false"))):
+            for value in values:
+                pin = self.artifact(**{key: value})
+                with self.assertRaises(self.module.TrialError) as error:
+                    self.module.delivery(self.root, pin)
+                self.assertEqual(str(error.exception), "unsupported optional Surface delivery")
+                self.assertNotIn("surface_control", sys.modules)
+        pin = self.artifact()
+        manifest = json.loads((self.root / "manifest.json").read_text())
+        for key in ("schema_version", "source", "source_dirty"):
+            bad = {k: v for k, v in manifest.items() if k != key}
+            (self.root / "manifest.json").write_text(json.dumps(bad))
+            with self.assertRaises(self.module.TrialError):
+                self.module.delivery(self.root, self.module.digest(self.root / "manifest.json"))
+            self.assertNotIn("surface_control", sys.modules)
+
+    def test_manifest_pin_and_every_file_hash_are_checked_before_import(self):
+        pin = self.artifact()
+        with self.assertRaises(self.module.TrialError):
+            self.module.delivery(self.root, "0" * 64)
+        (self.root / "control-contract.json").write_text("tampered")
+        with self.assertRaises(self.module.TrialError) as error:
+            self.module.delivery(self.root, pin)
+        self.assertEqual(str(error.exception), "artifact file hash/path mismatch")
+        self.assertNotIn("surface_control", sys.modules)
 
 
 if __name__ == "__main__":

@@ -8,8 +8,8 @@ feedback back. It is a consumer-side example: the role names (`arm/start/pause/c
 - The trial process is the owner of its simulation instance (R4-25). It calls
   `surface_control_reset` once, so its credential needs both simulation input permission and
   simulation-admin reset permission. Start a dedicated host instance per trial; never share it.
-- It imports the SDK only from a pinned host artifact (`surface-control-sdk-1.1.0.zip`, manifest
-  hash checked) and the Pipe controller modules only as a read-only optional dependency.
+- It imports the SDK only from a pinned host artifact (`surface-control-sdk-1.1.0.zip` or `surface-control-sdk-1.2.0.zip`, manifest
+  and every listed file hash checked) and the Pipe controller modules only as a read-only optional dependency.
 
 ## Usage
 
@@ -57,3 +57,13 @@ Command inputs use the control's range endpoints (or `true`/`false`). The script
 fixed messages, never for text from a transport or an imported module.
 
 Test: `python3 -m unittest discover -s integrations/pipe/tests`.
+
+## Delivery manifest verification
+
+The loader pins and validates the root `manifest.json`: exact integer `schema_version: 1`,
+`source: simulation`, boolean `source_dirty: false`, supported contract/SDK versions, and every
+listed delivery file's SHA-256 and relative path before importing the pinned SDK zip. Unknown
+private fields are allowed. BCR has two manifests: the Provider 1.0 `manifest.json` also carries
+the common Surface fields, and `surface-control-manifest.json` is additional information.
+Pass the SHA-256 of **manifest.json** to this script for both hosts; no host-specific manifest
+selection is needed. See the shared [field convention](../../docs/surface-control-delivery.md).
