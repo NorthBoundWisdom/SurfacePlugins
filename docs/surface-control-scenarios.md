@@ -1,0 +1,69 @@
+# Reproducible host simulation scenarios, version 1
+
+The [fixture](../fixtures/surface-control-software-v1.json) is a neutral versioned test
+specification with a [JSON Schema](surface-control-scenario.schema.json). It drives a real
+host Mock/session adapter using an injected monotonic clock. There is no second mapping or
+business engine in this package. Consumers map logical roles to their own stable control IDs;
+business meanings, tasks, authorization, and device models remain outside this fixture.
+
+Each scenario starts with independent newly created host Mock state and identity. The runner
+uses `initial_time_s + at_s` as operation time, never sleeps, and supplies current server-issued
+expected identity and CAS to each write. `minimum` and `maximum` mean the mapped control's
+declared input range endpoints; feedback value uses its separate feedback range when present.
+Indicator strings are literal. Roles must satisfy the fixture's declared input/feedback kinds.
+The four ordinary input roles start explicitly at their Mock minimum; they are not protected
+production command parameters. Feedback roles use independent controls. Hosts expose stable
+role mapping in the test report. No role name implies arm, task execution, or motion authority.
+
+Operations have these runner meanings:
+
+| Operation | Meaning |
+| --- | --- |
+| snapshot | Read real host state, current input/feedback session, and event highwater. Capture initial fences per instance on first read. |
+| input | Submit the mapped control value with current identity/CAS, except an explicit `expected_scope: initial` substitutes the initial identity. `encoding` overrides the discovered encoding only for a negative case. |
+| feedback | Submit feedback through the host's real feedback path; input values and accepted input evidence remain unchanged. |
+| replay_last_write | Re-submit the exact saved prior mutating request. Do not update its identity or CAS. Expected rejection proves no replay. |
+| events | Read the control journal with current instance/epoch and the stated decimal cursor. |
+| reset | Use authorized simulation admin reset with current identity/CAS/time, rebuild actual Mock initial state, and bootstrap only known raw values. |
+| restart | Recreate only the named host instance with fresh instance identity and initial Mock state; other instances continue unchanged. |
+
+`clock_override_s` and `invalid_value: nan` are in-process fault probes, not public tool fields.
+The runner constructs the nonfinite Swift value directly and injects clock override into the
+host adapter before engine processing. A JSON transport separately rejects invalid JSON/nonfinite
+numbers; it must not accept a client clock field. `scope: host` cases can also run through a real
+public transport when the isolated test server supports clock injection internally. `scope:
+inprocess` is never reported as network/process validation. `event_capacity` configures the
+isolated test session; it is not a new public mutation capability.
+
+`expect.disposition` checks the actual host result; ignored reason strings may differ by host.
+`accepted_input_delta` counts only `kind: input, disposition: accepted` events since the previous
+step for that instance. `accepted_input_count` counts those events in the current epoch. Neither
+counts feedback or ignored input. `known_inputs` compares fixture endpoint values to seeded or
+last accepted raw input state, without treating snapshots as operation evidence.
+`atomic` requires unchanged host engine state, input/feedback values, epoch, highwater, and
+journal after a rejected operation; pure-read `server_time` may advance. Reset is checked for a
+changed epoch and cleared history; restart for changed instance identity. Bounded journal gaps
+fail closed and require new explicit preparation. No failure path automatically retries an input.
+
+Reports include fixture scenario/version and SHA256, exact host/shared revision, profile ID and
+version, role mapping, per-step normalized `pass`/`fail`/`skip`, actual disposition/error, accepted
+input count, and relevant sequence/epoch-change evidence. An unavailable fault injection or
+configuration is `skip` with reason, never a pass. Credentials and tokens are excluded. Concrete
+instance/epoch entropy, wall clock times, and layout coordinates need not match across hosts;
+normalized semantic results must match. Separate real HTTP/process tests cover disconnection,
+unknown response outcomes, process replacement, and deployment isolation.
+
+These fixtures establish software control behavior. Existing Agent/Robot/Chassis/Output tests
+remain the deterministic device/safety baseline. This fixture does not implement a second device
+simulator or claim a complete application workflow, physical qualification, or Pipe integration.
+
+Development validation uses an isolated Python environment containing `jsonschema`:
+
+```sh
+swift run surface-control-schema --examples > /tmp/surface-control-examples.json
+python scripts/validate_surface_control_schemas.py --examples /tmp/surface-control-examples.json
+```
+
+The validator checks published request/result schemas against actual typed examples and this
+fixture against its versioned scenario schema. Its JSON `pass` result means schema validation;
+host scenario execution results are separate.

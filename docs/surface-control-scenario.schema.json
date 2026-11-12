@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:surface-control:scenario:1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "clock": {
+      "const": "injected_monotonic"
+    },
+    "initial_time_s": {
+      "type": "number"
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "input_kind": {
+            "enum": [
+              "absolute",
+              "relative",
+              "button"
+            ]
+          },
+          "encoding": {
+            "enum": [
+              "scalar",
+              "signedDelta",
+              "boolean"
+            ]
+          },
+          "feedback_kind": {
+            "enum": [
+              "value",
+              "indicator"
+            ]
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "minProperties": 1
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "enum": [
+              "host",
+              "inprocess"
+            ]
+          },
+          "instances": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "event_capacity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65536
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "at_s": {
+                  "type": "number"
+                },
+                "operation": {
+                  "enum": [
+                    "snapshot",
+                    "input",
+                    "feedback",
+                    "replay_last_write",
+                    "reset",
+                    "events",
+                    "restart"
+                  ]
+                },
+                "instance": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "role": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "value": {
+                  "enum": [
+                    "minimum",
+                    "maximum",
+                    "off",
+                    "on",
+                    "blink"
+                  ]
+                },
+                "invalid_value": {
+                  "enum": [
+                    "nan"
+                  ]
+                },
+                "encoding": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "expected_scope": {
+                  "enum": [
+                    "initial"
+                  ]
+                },
+                "clock_override_s": {
+                  "type": "number"
+                },
+                "after_sequence": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]*)$"
+                },
+                "expect": {
+                  "type": "object",
+                  "properties": {
+                    "sequence": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "latest_sequence": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "disposition": {
+                      "enum": [
+                        "accepted",
+                        "ignored"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "atomic": {
+                      "type": "boolean"
+                    },
+                    "inputs_unchanged": {
+                      "type": "boolean"
+                    },
+                    "accepted_input_delta": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "accepted_input_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "event_count": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "epoch_changed": {
+                      "type": "boolean"
+                    },
+                    "instance_changed": {
+                      "type": "boolean"
+                    },
+                    "known_inputs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "enum": [
+                          "minimum",
+                          "maximum"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "at_s",
+                "operation",
+                "expect"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "event_capacity",
+          "steps"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "scenario_id",
+    "clock",
+    "initial_time_s",
+    "roles",
+    "scenarios"
+  ],
+  "additionalProperties": false
+}
