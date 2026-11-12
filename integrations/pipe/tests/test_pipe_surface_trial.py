@@ -336,7 +336,7 @@ class DeliveryTests(unittest.TestCase):
         return self.module.digest(self.root / "manifest.json")
 
     def test_common_manifest_accepts_both_sdk_generations_and_private_provider_fields(self):
-        for contract, sdk_version in (("1.1", "1.1.0"), ("1.2", "1.2.0")):
+        for contract, sdk_version in (("1.1", "1.1.0"), ("1.2", "1.2.0"), ("1.3", "1.3.0")):
             sys.modules.pop("surface_control", None)
             pin = self.artifact(surface_control_contract=contract, surface_control_sdk=sdk_version,
                                 provider_version="1.0", provider_contract="private")

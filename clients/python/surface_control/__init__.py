@@ -1,4 +1,4 @@
-"""Optional Surface Control client for contracts 1.0, 1.1 and 1.2. Standard library only; no command retries.
+"""Optional Surface Control client for contracts 1.0, 1.1, 1.2 and 1.3. Standard library only; no command retries.
 
 This is the single shared SDK source (SurfacePlugins `clients/python`). Hosts copy it from their
 managed dependency into their delivery; they do not keep their own copy. It is separate from any
@@ -17,8 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-__version__ = "1.2.0"
-CONTRACT_VERSIONS = ("1.0", "1.1", "1.2")
+__version__ = "1.3.0"
+CONTRACT_VERSIONS = ("1.0", "1.1", "1.2", "1.3")
 PROTOCOL = "2025-11-25"
 PROTOCOLS = ("2025-11-25", "2026-07-28")
 MAX_BYTES = 8 * 1024 * 1024
@@ -211,6 +211,7 @@ class Client:
         self.contract_version = None
         self.profile = None
         self.latest_sequence = None
+        self.latest_input_sequence = None
         self.server_time = None
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
@@ -349,16 +350,47 @@ class Client:
             and all(isinstance(item, str) and item for item in profile.get("capabilities", [])),
             "unsupported_profile",
         )
-        if value["contract_version"] in ("1.1", "1.2"):
+        if value["contract_version"] in ("1.1", "1.2", "1.3"):
             require(mapping_revision(profile) == expected["mapping_revision"], "invalid_identity")
         validate_input_declarations(profile)
+        if value["contract_version"] != "1.3":
+            require(not {"input.independent_sequence", "events.writer_id", "writes.independent_limits"}.intersection(profile.get("capabilities", [])), "unsupported_contract")
         latest = cursor(value.get("latest_sequence"))
         require(self.latest_sequence is None or latest >= cursor(self.latest_sequence), "sequence_rollback")
         if self.expected is not None:
             require(self.expected == expected, "context_changed")
+        latest_input = self._read_input_sequence(value, profile=profile)
+        self._validate_write_limits(value, profile)
+        require(self.latest_input_sequence is None or latest_input is not None and cursor(latest_input) >= cursor(self.latest_input_sequence), "sequence_rollback")
         self.expected, self.latest_sequence = expected, value["latest_sequence"]
+        self.latest_input_sequence = latest_input
         self.contract_version, self.profile = value["contract_version"], profile
         return value
+
+    def _read_input_sequence(self, value, *, key="latest_input_sequence", global_key="latest_sequence", profile=None):
+        profile = self.profile if profile is None else profile
+        supported = "input.independent_sequence" in profile.get("capabilities", [])
+        require((key in value) == supported, "invalid_input_sequence")
+        if not supported:
+            return None
+        require(cursor(value[key]) <= cursor(value.get(global_key)), "invalid_input_sequence")
+        return value[key]
+
+    def _validate_write_limits(self, value, profile):
+        supported = "writes.independent_limits" in profile.get("capabilities", [])
+        require(("write_limits" in value) == supported, "invalid_write_limits")
+        if supported:
+            limits = value["write_limits"]
+            require(isinstance(limits, dict) and set(limits) == {"window_s", "input_per_window", "feedback_per_window", "renew_per_window", "admin_per_window"}, "invalid_write_limits")
+            require(type(limits["window_s"]) is int and limits["window_s"] == 1, "invalid_write_limits")
+            require(all(type(limits[key]) is int and 1 <= limits[key] <= 10000 for key in limits if key != "window_s"), "invalid_write_limits")
+
+    def _validate_writer(self, event):
+        supported = "events.writer_id" in self.profile.get("capabilities", [])
+        require(("writer_id" in event) == supported, "invalid_writer")
+        if supported:
+            value = event["writer_id"]
+            require(isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", value) is not None, "invalid_writer")
 
     def control(self, control_id):
         require(self.profile is not None, "not_initialized")
@@ -387,7 +419,12 @@ class Client:
         require(isinstance(value.get("inputs"), dict) and isinstance(value.get("feedback"), dict), "invalid_snapshot")
         holds = value.get("holds", {})
         require(isinstance(holds, dict) and all(finite(item) for item in holds.values()), "invalid_snapshot")
+        latest_input = self._read_input_sequence(value)
+        discovery_input = self._read_input_sequence(value["discovery"])
+        require(latest_input == discovery_input, "invalid_input_sequence")
+        require(self.latest_input_sequence is None or latest_input is not None and cursor(latest_input) >= cursor(self.latest_input_sequence), "sequence_rollback")
         self.latest_sequence = value["latest_sequence"]
+        self.latest_input_sequence = latest_input
         return value
 
     def refresh_sequence(self):
@@ -399,11 +436,20 @@ class Client:
         """
         return self.snapshot()["latest_sequence"]
 
-    def mutate(self, suffix, fields, extra=None, *, sequenced=True):
+    def refresh_input_sequence(self):
+        """Read one snapshot and return independent input CAS; never submit or replay an input."""
+        require(self.profile is not None and "input.independent_sequence" in self.profile.get("capabilities", []), "unsupported_input_sequence")
+        return self.snapshot()["latest_input_sequence"]
+
+    def mutate(self, suffix, fields, extra=None, *, sequenced=True, input_cas=False):
         require(self.expected is not None and self.latest_sequence is not None, "not_initialized")
         before = cursor(self.latest_sequence)
+        before_input = cursor(self.latest_input_sequence) if self.latest_input_sequence is not None else None
         arguments = {"expected": self.expected, **fields, **(extra or {})}
-        if sequenced:
+        if input_cas:
+            require(before_input is not None and suffix == "input", "unsupported_input_sequence")
+            arguments["expected_input_sequence"] = self.latest_input_sequence
+        elif sequenced:
             arguments["expected_sequence"] = self.latest_sequence
         value = self.call("surface_control_" + suffix, arguments)
         if suffix == "reset":
@@ -421,15 +467,20 @@ class Client:
                 and value.get("latest_sequence") == "0",
                 "invalid_response",
             )
-            if value.get("contract_version") in ("1.1", "1.2"):
+            if value.get("contract_version") in ("1.1", "1.2", "1.3"):
                 require(mapping_revision(value.get("profile")) == value["expected"].get("mapping_revision"), "invalid_identity")
+            next_profile = value.get("profile", self.profile)
+            next_input = self._read_input_sequence(value, profile=next_profile)
+            require(next_input in (None, "0"), "invalid_response")
+            self._validate_write_limits(value, next_profile)
             self.expected, self.latest_sequence = value["expected"], "0"
-            self.profile = value.get("profile", self.profile)
+            self.profile = next_profile
+            self.latest_input_sequence = next_input
         else:
             require(
                 value.get("expected") == self.expected
                 and value.get("source") == "simulation"
-                and (cursor(value.get("sequence")) == before + 1 if sequenced else cursor(value.get("sequence")) > before)
+                and (cursor(value.get("sequence")) == before + 1 if sequenced and not input_cas else cursor(value.get("sequence")) > before)
                 and finite(value.get("time"))
                 and value.get("origin") == "remote"
                 and value.get("kind") == suffix
@@ -439,16 +490,32 @@ class Client:
                 and (value.get("hold_deadline") is None or finite(value["hold_deadline"])),
                 "invalid_response",
             )
+            next_input = self._read_input_sequence(value, key="input_sequence", global_key="sequence")
+            self._validate_writer(value)
+            if before_input is not None:
+                actual = cursor(next_input)
+                if suffix == "input":
+                    require(actual == before_input + 1, "invalid_input_sequence")
+                elif sequenced:
+                    require(actual == before_input, "invalid_input_sequence")
+                else:
+                    require(actual >= before_input, "sequence_rollback")
             self.latest_sequence = value["sequence"]
+            self.latest_input_sequence = next_input
         return value
 
-    def input(self, control_id, encoding, value, hold_s=None):
+    def input(self, control_id, encoding, value, hold_s=None, *, cas="auto"):
+
         """Submit one input. `hold_s` (contract 1.1) requests a lease; the host returns `hold_deadline`."""
         extra = None
         if hold_s is not None:
-            require(finite(hold_s) and hold_s > 0 and self.contract_version in ("1.1", "1.2"), "unsupported_hold")
+            require(finite(hold_s) and hold_s > 0 and self.contract_version in ("1.1", "1.2", "1.3"), "unsupported_hold")
             extra = {"hold_s": hold_s}
-        return self.mutate("input", {"control_id": control_id, "encoding": encoding, "value": value}, extra)
+        require(cas in ("auto", "global", "input"), "invalid_argument")
+        supported = self.profile is not None and "input.independent_sequence" in self.profile.get("capabilities", [])
+        require(cas != "input" or supported, "unsupported_input_sequence")
+        return self.mutate("input", {"control_id": control_id, "encoding": encoding, "value": value}, extra,
+                           input_cas=supported and cas != "global")
 
     def feedback(self, control_id, kind, value, *, sequenced=None):
         """Default to no CAS when feedback.unsequenced is advertised; still consumes a sequence.
@@ -471,7 +538,7 @@ class Client:
 
         `hold_expired` means the lease is gone: the host restored the rest value. Prepare a new input.
         """
-        require(self.expected is not None and self.contract_version in ("1.1", "1.2"), "unsupported_hold")
+        require(self.expected is not None and self.contract_version in ("1.1", "1.2", "1.3"), "unsupported_hold")
         require(finite(hold_s) and hold_s > 0, "invalid_argument")
         value = self.call(
             "surface_control_renew", {"expected": self.expected, "control_id": control_id, "hold_s": hold_s}
@@ -499,6 +566,7 @@ class EventCursor:
         require(finite(max_age) and max_age > 0 and type(limit) is int and 1 <= limit <= 1024, "invalid_argument")
         self.client, self.clock, self.max_age, self.limit = client, clock, max_age, limit
         self.sequence = None
+        self.input_sequence = None
         self.expected = None
         self.invalidated = False
         self.last_clock = None
@@ -514,6 +582,8 @@ class EventCursor:
         require(snapshot.get("discovery", {}).get("expected") == self.client.expected, "context_changed")
         self.expected = dict(self.client.expected)
         self.sequence = cursor(snapshot["latest_sequence"])
+        value = self.client._read_input_sequence(snapshot)
+        self.input_sequence = cursor(value) if value is not None else None
         self.tick()
 
     def tick(self):
@@ -574,6 +644,11 @@ class EventCursor:
             )
             if event["disposition"] == "ignored":
                 require(event.get("reason") is not None, "invalid_event")
+            event_input = self.client._read_input_sequence(event, key="input_sequence", global_key="sequence")
+            self.client._validate_writer(event)
+            if self.input_sequence is not None:
+                require(cursor(event_input) == self.input_sequence + (event["kind"] == "input"), "invalid_input_sequence")
+                self.input_sequence = cursor(event_input)
             self.last_event_time = event["time"]
             self.sequence += 1
             age = page["server_time"] - event["time"]
@@ -594,7 +669,13 @@ class EventCursor:
         self.holds_server_time = page["server_time"]
         self.holds_request_started_monotonic = started
         self.holds_received_monotonic = received
+        page_input = self.client._read_input_sequence(page)
+        if self.input_sequence is not None:
+            current = cursor(page_input)
+            require(current >= self.input_sequence and current >= cursor(self.client.latest_input_sequence), "sequence_rollback")
+            require(self.sequence != latest or current == self.input_sequence, "invalid_input_sequence")
         self.client.latest_sequence = str(latest)
+        self.client.latest_input_sequence = page_input
         return entries
 
     def fresh(self, entry, now=None):

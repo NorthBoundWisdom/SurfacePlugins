@@ -1,4 +1,4 @@
-# Reproducible host simulation scenarios, versions 1, 1.1 and 1.2
+# Reproducible host simulation scenarios, versions 1, 1.1, 1.2 and 1.3
 
 The [1.0 fixture](../fixtures/surface-control-software-v1.json) and the
 [1.1 fixture](../fixtures/surface-control-software-v1.1.json) are neutral versioned test
@@ -118,3 +118,27 @@ The interleaving scenario serializes two logical writers at deterministic inject
 input commits, unsequenced feedback commits despite its writer's old local sequence, stale
 input is refused, then explicit refresh and a new input succeed. Separate host transport
 tests cover actual concurrent connections; fixture execution alone does not claim concurrency.
+
+## Contract 1.3 fixture
+
+The [1.3 fixture](../fixtures/surface-control-software-v1.3.json) retains all 83 v1.2 steps and
+adds `independent_input_cas_and_trusted_writers` (10 scenarios, 97 steps total). Older files are
+byte-identical. Top-level `required_capabilities` requires independent input CAS and trusted
+writer IDs. Legacy fixture steps always use global CAS, even when the host supports 1.3.
+
+- `expected_input_sequence` selects the new CAS and suppresses the runner's default global
+  field. The saved wire request must contain exactly that one field. Existing explicit
+  `expected_sequence` keeps its old override meaning.
+- `expect.latest_input_sequence` checks discovery/snapshot/event/page input highwater, as
+  applicable; `sequence`/`latest_sequence` still refer to the single global journal.
+- `expect.writer_kind` checks a returned event against the test host's trusted remote, interface,
+  or system principal. `event_writer_kinds` checks those identities in returned event order.
+  Fixture files never contain credentials, fingerprints, or a persisted private principal file.
+- `expect.event_input_sequences` checks each event's historical input highwater; page latest
+  highwaters refer to read time. New evidence covers feedback not consuming input CAS, old global
+  CAS still failing after feedback, ignored inputs consuming input CAS, reset clearing both,
+  and expiry using system identity and invalidating old input CAS.
+
+Reports normalize principals to their trusted `writer_kind` for cross-host comparison; public
+opaque ID entropy may differ. Independent-limit admission and credential/principal file security
+need separate real-process tests, alongside the fixture's deterministic adapter evidence.

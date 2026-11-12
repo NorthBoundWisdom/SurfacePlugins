@@ -30,8 +30,8 @@ import time
 
 sys.dont_write_bytecode = True
 
-SDK_VERSIONS = ("1.1.0", "1.2.0")
-SUPPORTED_CONTRACTS = ("1.0", "1.1", "1.2")
+SDK_VERSIONS = ("1.1.0", "1.2.0", "1.3.0")
+SUPPORTED_CONTRACTS = ("1.0", "1.1", "1.2", "1.3")
 # Consumer-side mapping: these parameter targets are Pipe trial roles, not shared contract names.
 ROLE_TARGETS = {name: "simulation." + name for name in ("arm", "start", "pause", "cancel")}
 FEEDBACK_TARGETS = ("simulation.state", "simulation.progress", "simulation.link")

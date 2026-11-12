@@ -11,6 +11,7 @@ jobs:
       - run: python3 -B -m unittest discover -s clients/python/tests
       - run: python3 -B -m unittest discover -s integrations/pipe/tests
       - run: swift run --build-path build/swiftpm surface-control-schema > build/surface-control-tools.json && diff build/surface-control-tools.json docs/surface-control-tools.json
+      - run: swift run --build-path build/swiftpm surface-control-schema --examples > build/surface-control-examples.json && diff build/surface-control-examples.json docs/surface-control-examples.json
       - run: python3 configs/check_boundaries.py
   linux:
     runs-on: ubuntu-24.04
@@ -27,4 +28,5 @@ jobs:
       - run: python3 -B -m unittest discover -s integrations/pipe/tests
       - run: swift run --build-path build/swiftpm surface-control-schema > build/surface-control-tools.json && diff build/surface-control-tools.json docs/surface-control-tools.json
       # This check reads source and SwiftPM metadata; it never invokes git.
+      - run: swift run --build-path build/swiftpm surface-control-schema --examples > build/surface-control-examples.json && diff build/surface-control-examples.json docs/surface-control-examples.json
       - run: python3 configs/check_boundaries.py

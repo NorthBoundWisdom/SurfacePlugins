@@ -7,8 +7,8 @@ generated with `swift run surface-control-schema`; hosts package the same descri
 
 Repository layout beyond Swift targets (never referenced by any Swift target):
 
-- `clients/python/surface_control/`: the single shared Python SDK (1.2.0, standard library only)
-  for contracts 1.0/1.1/1.2, with `clients/python/tests/`. Hosts copy it from their managed
+- `clients/python/surface_control/`: the single shared Python SDK (1.3.0, standard library only)
+  for contracts 1.0/1.1/1.2/1.3, with `clients/python/tests/`. Hosts copy it from their managed
   dependency into their SDK zip; they do not keep their own copy.
 - `docs/surface-control-tools.json`, `docs/surface-control-scenario.schema.json`, and `fixtures/`:
   the single source for published schemas and host scenario fixtures.

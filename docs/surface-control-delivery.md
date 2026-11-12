@@ -11,8 +11,8 @@ they do not know.
 | --- | --- | --- |
 | `schema_version` | integer | Version of this field convention. Currently `1`. |
 | `artifact` | string | Kind of delivery, for example `surface-control-simulator`. Not a host or product name. |
-| `surface_control_contract` | string | Contract version the host serves, for example `"1.2"`. |
-| `surface_control_sdk` | string | Version of the SDK in the delivery, for example `"1.2.0"`. |
+| `surface_control_contract` | string | Contract version the host serves, for example `"1.3"`. |
+| `surface_control_sdk` | string | Version of the SDK in the delivery, for example `"1.3.0"`. |
 | `source` | string | Always `"simulation"` for these deliveries. |
 | `source_commit` | string | Full 40-character host commit the delivery was built from. |
 | `source_dirty` | boolean | True when the host tree had uncommitted changes. A release delivery has `false`. |
@@ -33,7 +33,7 @@ Rules:
   member without a separate field.
 - `surface_plugins_files_sha256` keys are paths inside the shared package at
   `surface_plugins_revision` (for example `docs/surface-control-tools.json`,
-  `fixtures/surface-control-software-v1.2.json`). Every copy in the delivery is byte-identical.
+  `fixtures/surface-control-software-v1.3.json`). Every copy in the delivery is byte-identical.
 - `profile_id`, `profile_version`, and `mapping_revision` describe the configuration the delivery
   starts by default. A running instance is still pinned through `surface_control_discover`; a
   different configuration yields a different revision there.
@@ -49,3 +49,7 @@ A host may deliver another manifest for a separate consumer surface. The common 
 still be present in root `manifest.json`. In particular, the BCR delivery's Provider 1.0
 manifest includes them alongside its provider fields; `surface-control-manifest.json` is an
 additional file. A generic consumer selects and pins `manifest.json` in either host.
+
+Principal registry files are private host startup configuration. They must never be copied into
+a delivery, `files_sha256`, SDK zip, or public manifest. Their writer IDs identify host-owned
+principals, not credentials or individual clients sharing the same credential.

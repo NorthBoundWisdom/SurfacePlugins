@@ -1,4 +1,4 @@
-# Optional simulation control contract 1.2
+# Optional simulation control contract 1.3
 
 `SurfaceControlContracts` is a Foundation-only value contract for public control discovery,
 simulation inputs, feedback, and a separate bounded control journal. It does not replace
@@ -7,7 +7,7 @@ This delivery identifies every control event as `source: simulation`; it grants 
 controller qualification. The host injects the existing trusted `InputOrigin` separately.
 
 Consumers discover `surface_control_discover({})`. Its result has `schema_version: 1`,
-`contract_version: "1.2"` (see "Contract 1.2 changes" below), `source`, `expected`, and `profile`. Profile IDs and versions are
+`contract_version: "1.3"` (see "Contract 1.3 changes" below), `source`, `expected`, and `profile`. Profile IDs and versions are
 explicit host declarations. Controls have stable string IDs, input kind, encoding, optional
 numeric range/step, feedback kinds, and an optional mapping target. Coordinates, layers,
 device ranges, and layout remain host declarations. Business operations and units belong
@@ -21,7 +21,7 @@ position. Feedback `value` uses `feedback_range` when declared, otherwise the in
 `indicator` accepts `off`, `on`, or `blink`. Hosts render these values using their own
 motor, touch, layer, lamp, and ring rules.
 
-Input and reset writes carry a canonical decimal `expected_sequence` matching the current control journal highwater. Feedback may omit it when `feedback.unsequenced` is advertised; an explicit sequence retains the same CAS check. All writes carry `expected` with `instance_id`, `epoch`, `mapping_revision`, `profile_id`,
+Input writes carry exactly one canonical decimal CAS: legacy `expected_sequence` compares the current control journal highwater; optional `expected_input_sequence` compares only the input highwater when `input.independent_sequence` is advertised. Reset always uses the legacy global CAS. Feedback may omit it when `feedback.unsequenced` is advertised; an explicit sequence retains the same CAS check. All writes carry `expected` with `instance_id`, `epoch`, `mapping_revision`, `profile_id`,
 and `profile_version`. Discovery includes `latest_sequence`. Accepted and ignored input/feedback writes consume a sequence, including feedback without a sequence comparison. Stale CAS writes return `stale_sequence`: the request was definitely not executed, and is never replayed. These values come from discovery and fence stale instances and
 mappings. They do not grant permission. New tools do not bypass protected parameters.
 The host must authorize simulation writes and simulation-admin reset independently.
@@ -210,12 +210,100 @@ An absent page field clears `holds` to `{}`. The v1.2 scenario fixture covers in
 feedback/input, explicit refresh, current leases, and declared non-input controls; v1/v1.1
 files remain byte-for-byte unchanged.
 
+## Contract 1.3 changes
+
+`contract_version` is `"1.3"`, `schema_version` stays `1`, and SDK is `1.3.0`.
+All new behaviors are capability-gated optional additions. A 1.2 input with
+`expected_sequence` still compares the full journal, including feedback, with exactly its old
+meaning. Older SDK version allowlists fail closed until deliberately upgraded. New SDKs keep
+using legacy CAS against a host without the new input capability. Old v1/v1.1/v1.2 fixtures
+remain byte-identical; [v1.3](../fixtures/surface-control-software-v1.3.json) adds new evidence.
+
+1. **Independent input CAS (`input.independent_sequence`).** Discovery, snapshots, and event
+   pages include `latest_input_sequence`; every event includes `input_sequence`, its input
+   highwater just after that historical commit. These are canonical UInt64 decimal strings.
+   Accepted **and ignored** inputs, including host `hold_expired`, increment it. Feedback leaves
+   it unchanged; renewal remains silent. The single journal `sequence` remains continuous and
+   still includes feedback. No second journal or feedback counter is introduced.
+
+   An input has exactly one of `expected_sequence` and `expected_input_sequence`; both or neither
+   is `invalid_argument` in both schema and strict parser. New CAS is accepted only with the
+   capability and returns `stale_input_sequence` if it does not match: the input definitely did
+   not execute. A feedback committed in between does not invalidate it, but any input, ignored
+   input, or expiry does. Both identity/CAS checks and required-counter exhaustion checks run
+   before host engine execution, including preflight calls without an explicit time. Hosts
+   retain monotonic time and pending-expiry fences, copy/validate/commit atomicity, and permission
+   checks. Reset still uses global CAS, changes epoch, and clears both counters. Changing the
+   optional capabilities alone does not change `mapping_revision`; hosts still rotate context.
+
+   SDK `Client.input(..., cas="auto")` selects independent CAS when supported; `cas="global"`
+   retains old CAS and `cas="input"` requires the new capability. `latest_sequence` and
+   `latest_input_sequence` are stored separately. `refresh_sequence()` still returns global
+   highwater, and `refresh_input_sequence()` returns input highwater; each reads one snapshot
+   without writing or replaying an input. Unknown transport outcomes are never retried.
+   Mutation responses may jump global sequence while observing one input increment. Existing
+   `EventCursor` positions do not move on mutation or refresh. Poll checks contiguous global
+   events and kind-consistent input increments, keeps historical page values separate from the
+   latest CAS, and never rolls a client's input CAS back during pagination.
+
+   `BinaryRoleCursor` retains its conservative **global** superseded/verify rule: later feedback
+   can still supersede an intent for that consumer. Independent input writing does not silently
+   relax that safety check. Consumers needing a different verification policy require separate
+   design and evidence.
+
+2. **Trusted principals (`events.writer_id`).** Every event includes `writer_id` only when the
+   profile declares this capability. The host authenticates a credential, resolves its own
+   opaque principal record, and passes the public ID through trusted `writerID:` parameters on
+   `validateInput`, `validateFeedback`, `recordInput`, `recordFeedback`, and `recordHoldExpiry`.
+   Missing/invalid IDs fail before record/state changes; no remote request accepts a writer ID.
+   IDs use 1–128 ASCII letters/digits/`_`/`.`/`-`. The host issues random IDs with at least 128
+   bits of entropy; the shared contract neither signs identities nor reads/hashes credentials.
+   Never publish raw credentials, their plain hashes, or short credential fingerprints.
+
+   Remote, interface, and system-expiry principals are distinct. Expiry retains
+   `origin: remote / reason: hold_expired` and uses the system ID, never the last remote caller's
+   ID. `writer_id` is attribution, not authorization, a replay token, or lease ownership.
+   With today's single bearer credential, all remote clients belong to one principal; it does
+   **not** distinguish clients using that same credential. Any number of read-only clients can
+   coexist. Readers filtering principals still advance over the complete journal.
+
+   By default host IDs are stable across connections for the current instance/process and no
+   file is written. Hosts may explicitly persist their own record with
+   `--surface-principal-file PATH`: strict schema_version 1 and three different
+   `remote_writer_id`, `interface_writer_id`, `system_writer_id`, no credential or fingerprint.
+   Existing records must be current-user-owned regular non-symlink files with mode 0600;
+   creation is safe create-only/atomic with 0600, never overwrites or follows a raced path.
+   Reusing a validated record may retain principals over restart/explicit credential rotation,
+   while instance/epoch fences still change normally. These private files never enter a public
+   delivery or manifest. IDs have no cross-host identity meaning.
+
+3. **Independent write limits (`writes.independent_limits`).** In explicit independent mode,
+   discovery includes `write_limits`: `window_s: 1`, `input_per_window`, `feedback_per_window`,
+   `renew_per_window`, `admin_per_window` (integers 1–10000). It must be absent without the
+   capability. The shared `ControlWriteLimits` is only a value description; hosts own timing,
+   permission checks, accounting, and existing rate-limit errors.
+
+   Hosts opt in with `--write-limits input=60,feedback=20,renew=60,admin=5` (all four keys required,
+   no duplicates/unknowns). This conflicts with explicit `--write-limit N`, whose original
+   aggregate meaning remains unchanged. Without the new option, default aggregate60/s remains.
+   Independent fixed 1s windows are per instance/category and shared by all clients, without
+   borrowing. Input/feedback/renew/admin(reset) each use their own quota. Validation failure
+   does not consume quota, and time regression does not create fresh quota. System expiry
+   never consumes an external write budget. Feedback exhaustion cannot consume input/renew
+   quota; renewal exhaustion cannot consume rest/stop input quota. A rejected call has not
+   executed and is not automatically queued/replayed; an expired lease is never locally extended.
+
+Hosts adopting 1.3 lock the same shared SHA and explicitly update profile version, SDK/schema,
+capability allowlists, and delivery pins. If control mapping content stays unchanged, its hash
+stays unchanged. Pipe's own parser/SDK/role pins must be upgraded by its maintainers; this
+contract does not claim its Worker workflow has been verified.
+
 ## Consumer guidance
 
-These points describe contract 1.2. The writer-identity open topic needs an agreed identity
-model (issuer and binding to credentials) before a future schema change.
+These points apply to the legacy aggregate mode and CAS as indicated; the optional 1.3 modes
+above refine writing and attribution without changing clock, expiry, or permission rules.
 
-**Shared write budget.** Input, feedback, renewal, and reset calls share the host's per-second
+**Shared write budget (legacy mode).** Input, feedback, renewal, and reset calls share the host's per-second
 write limit; both current hosts default to 60 calls/s. A silent renewal still uses that budget,
 and unsequenced feedback does not bypass it. Treat the limit as a ceiling, not a target, and
 leave capacity for operator input and lease renewal. Start display feedback at a fixed 2–5 Hz
@@ -226,7 +314,7 @@ account for every concurrently held control. These rates are recommendations, no
 protocol guarantees. If the budget is exhausted, do not automatically replay a lost input or
 extend a lease locally; use the host's result and the existing fail-closed recovery rules.
 
-**Feedback and input CAS.** Unsequenced feedback still consumes the shared journal sequence.
+**Feedback and legacy input CAS.** Unsequenced feedback still consumes the shared journal sequence.
 An input prepared before that feedback can therefore receive `stale_sequence`; this response
 means the input definitely did not execute. Call `refresh_sequence()` to read the current
 highwater, then let the caller decide whether the intention is still current and submit a new
@@ -258,7 +346,7 @@ Renew well before the lower bound and never extend a local deadline from a respo
 `server_time` did not come from the request being measured. Clock rate difference over a lease
 of at most 10 s is negligible next to the round trip.
 
-**Writers and readers.** The contract does not identify remote callers. `origin: remote` covers
+**Writers and readers without `events.writer_id`.** These events do not identify remote callers. `origin: remote` covers
 every remote caller with input permission and also the host's own `hold_expired` event, which is
 told apart only by `reason: "hold_expired"`. Any number of clients may read (discover, snapshot,
 events) at once. Input/reset writes and sequenced feedback use `expected_sequence`: of two concurrent CAS
@@ -268,7 +356,7 @@ explicit sequence refresh after a confirmed conflict; a display-feedback writer 
 The contract does not stop another authorized input client from writing. A read-only
 follower beside the instance owner is allowed; when the owner resets, the epoch changes, the
 follower gets `stale_epoch`, and it must discover and bootstrap again, discarding pending
-intentions. A stable writer identity in events is not provided (open topic).
+intentions. A stable writer identity is available only through the explicit 1.3 `events.writer_id` capability.
 
 **Controls without a mapping.** On a profile declaring `controls.input_declared`, inspect
 `accepts_input` instead of inferring permission from a mapping. The BCR host declares input only

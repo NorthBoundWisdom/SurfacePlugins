@@ -163,7 +163,7 @@ class MappingRevisionTests(unittest.TestCase):
 
 class ClientTests(unittest.TestCase):
     def test_version(self):
-        self.assertEqual(__version__, "1.2.0")
+        self.assertEqual(__version__, "1.3.0")
 
     def test_profile_allowlist_is_caller_owned(self):
         client = Fixture()
@@ -184,9 +184,9 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(SurfaceError):
             Fixture("1.1").discover(versions=("1.0",))
         with self.assertRaises(SurfaceError):
-            Fixture("1.3").discover()
+            Fixture("1.4").discover()
         with self.assertRaises(SurfaceError):
-            Fixture().discover(versions=("1.3",))
+            Fixture().discover(versions=("1.4",))
 
     def test_contract_1_1_requires_derived_mapping_revision(self):
         client = Fixture("1.1")
@@ -698,6 +698,197 @@ class CursorTests(unittest.TestCase):
         self.assertTrue(events.fresh(entries[0], now=1))
         self.assertFalse(events.fresh(entries[0], now=10))
         self.assertEqual(events.sequence, 1)
+
+
+
+class QFixture(Fixture):
+    """Deterministic contract-1.3 server; state is independent of the SDK's highwaters."""
+    def __init__(self, *, independent=True, writers=True, limits=True):
+        prof = profile(version="1.3")
+        prof["capabilities"] += ["feedback.unsequenced"]
+        if independent:
+            prof["capabilities"].append("input.independent_sequence")
+        if writers:
+            prof["capabilities"].append("events.writer_id")
+        if limits:
+            prof["capabilities"].append("writes.independent_limits")
+        super().__init__("1.3", prof)
+        self.input_head = 0
+        self.epoch = "epoch"
+
+    def disc(self):
+        result = discovery(self.contract, self.prof)
+        result["expected"]["mapping_revision"] = mapping_revision(self.prof)
+        result["expected"]["epoch"] = self.epoch
+        result["latest_sequence"] = str(self.head)
+        if "input.independent_sequence" in self.prof["capabilities"]:
+            result["latest_input_sequence"] = str(self.input_head)
+        if "writes.independent_limits" in self.prof["capabilities"]:
+            result["write_limits"] = {"window_s": 1, "input_per_window": 60, "feedback_per_window": 20,
+                                      "renew_per_window": 60, "admin_per_window": 5}
+        return result
+
+    def event(self, control, value, **fields):
+        if fields.get("kind", "input") == "input":
+            self.input_head += 1
+        super().event(control, value, **fields)
+        if "input.independent_sequence" in self.prof["capabilities"]:
+            self.rows[-1]["input_sequence"] = str(self.input_head)
+        if "events.writer_id" in self.prof["capabilities"]:
+            self.rows[-1]["writer_id"] = "principal.system" if fields.get("reason") == "hold_expired" else "principal.remote"
+
+    def call(self, name, arguments=None):
+        if self.response_override is not None:
+            return super().call(name, arguments)
+        if name.endswith(("input", "feedback", "reset")):
+            self.calls.append((name, arguments))
+            if "expected_sequence" in arguments and arguments["expected_sequence"] != str(self.head):
+                raise SurfaceError("stale_sequence")
+            if "expected_input_sequence" in arguments and arguments["expected_input_sequence"] != str(self.input_head):
+                raise SurfaceError("stale_input_sequence")
+            if name.endswith("reset"):
+                self.head = self.input_head = 0
+                self.rows.clear()
+                self.epoch += "-reset"
+                return self.disc()
+            feedback = name.endswith("feedback")
+            self.event(arguments["control_id"], arguments["value"], kind="feedback" if feedback else "input",
+                       encoding=arguments["kind"] if feedback else arguments["encoding"])
+            return copy.deepcopy(self.rows[-1])
+        result = super().call(name, arguments)
+        if name.endswith(("snapshot", "events")) and "input.independent_sequence" in self.prof["capabilities"]:
+            result["latest_input_sequence"] = str(self.input_head)
+        if name.endswith("events"):
+            result["events"] = [row for row in result["events"] if int(row["sequence"]) > int(arguments["after_sequence"])][:arguments["limit"]]
+        return result
+
+
+class V13Tests(unittest.TestCase):
+    def client(self, **options):
+        client = QFixture(**options)
+        client.discover()
+        return client
+
+    def test_auto_input_cas_survives_feedback_and_explicit_global_keeps_conflict(self):
+        client = self.client()
+        client.event("arm", "on", kind="feedback", encoding="indicator")
+        with self.assertRaises(SurfaceError) as error:
+            client.input("arm", "scalar", 127, cas="global")
+        self.assertEqual(error.exception.code, "stale_sequence")
+        self.assertEqual(client.latest_sequence, "0")
+        result = client.input("arm", "scalar", 127)
+        self.assertEqual((result["sequence"], result["input_sequence"]), ("2", "1"))
+        self.assertEqual(client.calls[-1][1]["expected_input_sequence"], "0")
+        self.assertNotIn("expected_sequence", client.calls[-1][1])
+        self.assertEqual(client.latest_input_sequence, "1")
+        self.assertEqual(client.refresh_input_sequence(), "1")
+        self.assertEqual(client.refresh_sequence(), "2")
+
+    def test_input_conflict_is_definitely_not_executed_and_not_retried(self):
+        client = self.client()
+        client.event("pause", 127, reason="hold_expired")
+        before = len(client.calls)
+        with self.assertRaises(SurfaceError) as error:
+            client.input("arm", "scalar", 127)
+        self.assertEqual(error.exception.code, "stale_input_sequence")
+        self.assertEqual(len(client.calls), before + 1)
+        self.assertEqual(client.latest_input_sequence, "0")
+        self.assertEqual(client.refresh_input_sequence(), "1")
+        self.assertEqual(client.input("arm", "scalar", 127, cas="input")["input_sequence"], "2")
+
+    def test_legacy_host_fallback_and_invalid_explicit_modes(self):
+        client = self.client(independent=False)
+        client.input("arm", "scalar", 127)
+        self.assertEqual(client.calls[-1][1]["expected_sequence"], "0")
+        for mode in ("input", "bogus"):
+            with self.assertRaises(SurfaceError):
+                client.input("arm", "scalar", 127, cas=mode)
+        with self.assertRaises(SurfaceError):
+            client.refresh_input_sequence()
+
+    def test_paginated_cursor_does_not_regress_client_input_highwater_or_skip_events(self):
+        client = self.client()
+        events = EventCursor(client, clock=lambda: 1, limit=1)
+        events.bootstrap(client.snapshot())
+        client.event("start", 127)
+        client.event("arm", "on", kind="feedback", encoding="indicator")
+        client.event("pause", 127)
+        # Feedback response observes intervening inputs, without moving the read cursor.
+        self.assertEqual(client.feedback("arm", "indicator", "on")["sequence"], "4")
+        self.assertEqual(client.latest_input_sequence, "2")
+        self.assertEqual(events.sequence, 0)
+        seen = []
+        for _ in range(4):
+            seen.extend(entry["event"]["sequence"] for entry in events.poll())
+            self.assertEqual(client.latest_input_sequence, "2")
+        self.assertEqual(seen, ["1", "2", "3", "4"])
+        self.assertEqual(events.input_sequence, 2)
+        self.assertEqual(events.sequence, 4)
+
+    def test_event_input_highwater_and_writer_are_checked_and_failure_invalidates(self):
+        for mutate in (lambda row: row.pop("writer_id"),
+                       lambda row: row.__setitem__("writer_id", "bad id"),
+                       lambda row: row.pop("input_sequence"),
+                       lambda row: row.__setitem__("input_sequence", "0"),
+                       lambda row: row.__setitem__("input_sequence", "2")):
+            client = self.client()
+            events = EventCursor(client, clock=lambda: 1)
+            events.bootstrap(client.snapshot())
+            client.event("start", 127)
+            mutate(client.rows[0])
+            with self.assertRaises(SurfaceError):
+                events.poll()
+            self.assertTrue(events.invalidated)
+        client = self.client()
+        events = EventCursor(client, clock=lambda: 1)
+        events.bootstrap(client.snapshot())
+        client.event("arm", "on", kind="feedback", encoding="indicator")
+        client.rows[0]["input_sequence"] = "1"
+        with self.assertRaises(SurfaceError):
+            events.poll()
+
+    def test_discovery_extensions_are_capability_consistent_and_limits_strict(self):
+        for mutate in (lambda d: d.pop("latest_input_sequence"),
+                       lambda d: d.__setitem__("latest_input_sequence", "1"),
+                       lambda d: d["write_limits"].__setitem__("input_per_window", True),
+                       lambda d: d["write_limits"].__setitem__("window_s", 2),
+                       lambda d: d["write_limits"].__setitem__("extra", 1),
+                       lambda d: d.pop("write_limits")):
+            client = QFixture()
+            value = client.disc()
+            mutate(value)
+            client.response_override = value
+            with self.assertRaises(SurfaceError):
+                client.discover()
+        client = QFixture(independent=False, limits=False)
+        value = client.disc()
+        value["latest_input_sequence"] = "0"
+        client.response_override = value
+        with self.assertRaises(SurfaceError):
+            client.discover()
+
+    def test_mutation_metadata_is_checked_before_highwaters_change(self):
+        for mutate in (lambda row: row.pop("writer_id"),
+                       lambda row: row.__setitem__("input_sequence", "0"),
+                       lambda row: row.__setitem__("input_sequence", "2")):
+            client = self.client()
+            row = {"expected": client.expected, "source": "simulation", "sequence": "1", "input_sequence": "1",
+                   "writer_id": "principal.remote", "time": 1, "origin": "remote", "kind": "input",
+                   "disposition": "accepted", "control_id": "arm", "encoding": "scalar", "value": 127}
+            mutate(row)
+            client.response_override = row
+            with self.assertRaises(SurfaceError):
+                client.input("arm", "scalar", 127)
+            self.assertEqual(client.latest_sequence, "0")
+            self.assertEqual(client.latest_input_sequence, "0")
+
+    def test_reset_clears_both_counters_and_keeps_global_request(self):
+        client = self.client()
+        client.input("arm", "scalar", 127)
+        client.reset()
+        self.assertEqual((client.latest_sequence, client.latest_input_sequence), ("0", "0"))
+        self.assertEqual(client.calls[-1][1]["expected_sequence"], "1")
+        self.assertNotIn("expected_input_sequence", client.calls[-1][1])
 
 
 if __name__ == "__main__":
