@@ -17,6 +17,7 @@ final class ReviewBoundaryTests: XCTestCase {
         XCTAssertEqual(plugin.simulator.snapshot().actual?.joints_rad, before.actual?.joints_rad)
         XCTAssertEqual(plugin.simulator.control.time, 0.5, accuracy: 1e-12)
         XCTAssertEqual(plugin.simulator.control.fault, "host_clock_gap")
+        XCTAssertTrue(plugin.snapshot().isStarted); XCTAssertTrue(plugin.acceptsWrites)
         XCTAssertNil(plugin.simulator.control.owner); XCTAssertFalse(plugin.simulator.control.enabled)
         XCTAssertFalse(update.events.isEmpty)
         _ = try plugin.handle(.advance, at: 100_000.1)

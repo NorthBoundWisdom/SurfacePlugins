@@ -159,3 +159,48 @@ final class CommandBaselineTests: XCTestCase {
         }
     }
 }
+
+final class PendingStopClockGapTests: XCTestCase {
+    func testGapWhileStoppingCannotRestoreWriteLifecycle() throws {
+        for domain in ["robot", "chassis"] {
+            var registry = try RemoteRegistry(epoch: "test")
+            if domain == "robot" {
+                var plugin = try RobotPlugin(instanceID: domain)
+                _ = try plugin.handle(.start, at: 0)
+                try plugin.simulator.initialize([0,0,0,0,0,0], generation: plugin.simulator.control.generation)
+                let g = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "test", ttl: 5, controlToken: "secret")
+                try plugin.simulator.enable(.init(generation: g.generation, token: g.control_token, sequence: 1))
+                try plugin.simulator.move(.init(generation: g.generation, token: g.control_token, sequence: 2), target: [1,0,0,0,0,0], duration: 1.5, validFor: 2)
+                try registry.install(RobotRemoteBinding(instanceID: domain, plugin: plugin))
+            } else {
+                var plugin = try ChassisPlugin(instanceID: domain)
+                _ = try plugin.handle(.start, at: 0)
+                try plugin.simulator.initialize([0,0,0], generation: plugin.simulator.control.generation)
+                let g = try plugin.simulator.acquire(generation: plugin.simulator.control.generation, owner: "test", ttl: 5, controlToken: "secret")
+                try plugin.simulator.enable(.init(generation: g.generation, token: g.control_token, sequence: 1))
+                try plugin.simulator.drive(.init(generation: g.generation, token: g.control_token, sequence: 2), speed: 0.8, steering: 0.3, validFor: 2)
+                try registry.install(ChassisRemoteBinding(instanceID: domain, plugin: plugin))
+            }
+            _ = try registry.handle(instanceID: domain, input: .advance, at: 0.5)
+            _ = try registry.handle(instanceID: domain, input: .stop, at: 0.5)
+            XCTAssertEqual(registry.snapshot(instanceID: domain)?.isStarted, true)
+            _ = try registry.handle(instanceID: domain, input: .advance, at: 100)
+            XCTAssertEqual(registry.snapshot(instanceID: domain)?.isStarted, false)
+            if domain == "robot" { XCTAssertEqual(registry.binding(domain, as: RobotRemoteBinding.self)?.plugin.acceptsWrites, false) }
+            else { XCTAssertEqual(registry.binding(domain, as: ChassisRemoteBinding.self)?.plugin.acceptsWrites, false) }
+            let snapshotArgs: JSONValue = .object(["instance_id": .string(domain)])
+            let snapshot = try registry.call("surface_"+domain+"_snapshot", arguments: snapshotArgs, context: .init(time: 100))
+            let generation = try XCTUnwrap(snapshot.objectValue?["metadata"]?.objectValue?["generation"])
+            XCTAssertEqual(snapshot.objectValue?["metadata"]?.objectValue?["fault"], .string("host_clock_gap"))
+            let reset: JSONValue = .object(["instance_id": .string(domain), "generation": generation])
+            let acquire: JSONValue = .object(["instance_id": .string(domain), "generation": generation, "owner": .string("new"), "ttl_s": .number(1)])
+            for (name, arguments) in [("reset", reset), ("acquire", acquire)] {
+                XCTAssertThrowsError(try registry.call("surface_"+domain+"_"+name, arguments: arguments, context: .init(time: 100, controlToken: "next-secret"))) {
+                    XCTAssertEqual(($0 as? RemoteFailure)?.code, "stopped")
+                }
+            }
+            XCTAssertEqual(try registry.call("surface_"+domain+"_snapshot", arguments: snapshotArgs, context: .init(time: 100)), snapshot)
+            XCTAssertNoThrow(try registry.call("surface_"+domain+"_trace", arguments: snapshotArgs, context: .init(time: 100)))
+        }
+    }
+}

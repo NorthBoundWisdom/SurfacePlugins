@@ -59,7 +59,9 @@ public struct RobotPlugin: ControlPlugin {
                 let gap = time - previous
                 if gap > maxCatchUpGap {
                     // Never integrate an unbounded host stall or invent post-stall movement.
+                    let wasStopping = next.stopping
                     try next.simulator.fault("host_clock_gap", generation: next.simulator.control.generation)
+                    if wasStopping { next.started = false }
                     next.stopping = false
                 } else {
                     let end = next.simulator.control.time + gap
