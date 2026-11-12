@@ -1,16 +1,30 @@
 name: Swift
 on: [push, pull_request]
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  macos:
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: '6.0'
+      - run: swift --version
       - run: swift build --build-path build/swiftpm
       - run: swift test --build-path build/swiftpm
+      - run: python3 -B -m unittest discover -s clients/python/tests
+      - run: python3 -B -m unittest discover -s integrations/pipe/tests
+      - run: swift run --build-path build/swiftpm surface-control-schema > build/surface-control-tools.json && diff build/surface-control-tools.json docs/surface-control-tools.json
+      - run: python3 configs/check_boundaries.py
+  linux:
+    runs-on: ubuntu-24.04
+    container: swift:6.2-noble
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: swift --version
+      - run: swift build --build-path build/swiftpm
+      - run: swift test --build-path build/swiftpm
+      - run: python3 -B -m unittest discover -s clients/python/tests
+      - run: python3 -B -m unittest discover -s integrations/pipe/tests
+      - run: swift run --build-path build/swiftpm surface-control-schema > build/surface-control-tools.json && diff build/surface-control-tools.json docs/surface-control-tools.json
+      # This check reads source and SwiftPM metadata; it never invokes git.
       - run: python3 configs/check_boundaries.py

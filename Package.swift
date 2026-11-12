@@ -2,6 +2,7 @@
 import PackageDescription
 let package = Package(
     name: "SurfacePlugins",
+    platforms: [.macOS(.v14)],
     products: [.library(name: "SurfaceControlContracts", targets: ["SurfaceControlContracts"]),
                .executable(name: "surface-control-schema", targets: ["SurfaceControlSchema"]),
                .library(name: "SurfacePluginContracts", targets: ["SurfacePluginContracts"]),
