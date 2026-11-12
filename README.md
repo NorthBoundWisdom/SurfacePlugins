@@ -10,6 +10,8 @@ Repository layout beyond Swift targets (never referenced by any Swift target):
 - `clients/python/surface_control/`: the single shared Python SDK (1.3.0, standard library only)
   for contracts 1.0/1.1/1.2/1.3, with `clients/python/tests/`. Hosts copy it from their managed
   dependency into their SDK zip; they do not keep their own copy.
+- `clients/python/surface_conformance/`: the standard-library [live fixture checker](docs/surface-control-conformance.md),
+  packaged beside the SDK; it reports pass/fail/skip and never retries a write.
 - `docs/surface-control-tools.json`, `docs/surface-control-scenario.schema.json`, and `fixtures/`:
   the single source for published schemas and host scenario fixtures.
 - `integrations/pipe/`: consumer-specific Pipe trial example and test. It is not part of the SDK

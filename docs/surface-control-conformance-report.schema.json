@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Live surface conformance report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "fixture_sha256",
+    "contract_version",
+    "profile_id",
+    "profile_version",
+    "mapping_revision",
+    "roles",
+    "steps",
+    "counts",
+    "fixture_contract_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "fixture_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "mapping_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenario",
+          "step",
+          "operation",
+          "status",
+          "executed"
+        ],
+        "properties": {
+          "scenario": {
+            "type": "string"
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operation": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "skip"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "error": {
+            "type": "string"
+          },
+          "disposition": {
+            "enum": [
+              "accepted",
+              "ignored"
+            ]
+          },
+          "actual": {
+            "type": "object"
+          },
+          "executed": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "fail",
+                    "skip"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "reason"
+              ],
+              "properties": {}
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "pass"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "actual"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "skip"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "executed": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pass",
+        "fail",
+        "skip"
+      ],
+      "properties": {
+        "pass": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skip": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "fixture_contract_version": {
+      "enum": [
+        "1.0",
+        "1.1",
+        "1.2",
+        "1.3"
+      ]
+    }
+  }
+}

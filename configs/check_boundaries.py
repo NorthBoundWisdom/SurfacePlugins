@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Keep production targets platform independent and dependency direction explicit."""
+import ast
 import json
+import sys
 import pathlib
 import re
 import subprocess
@@ -40,11 +42,16 @@ for path in [root / "Package.swift", *(root / "Sources").rglob("*.swift")]:
         errors.append(f"{path.relative_to(root)}: references clients/ or integrations/")
 sdk = root / "clients/python/surface_control"
 stdlib = {"__future__", "json", "math", "re", "time", "urllib"}
-for path in sdk.rglob("*.py"):
+for path in [*sdk.rglob("*.py"), *(root / "clients/python/surface_conformance").rglob("*.py")]:
     text = path.read_text()
     for imported in re.findall(r"^\s*(?:from|import)\s+([A-Za-z_][\w]*)", text, re.M):
-        if imported not in stdlib:
+        if imported not in stdlib | set(getattr(sys, "stdlib_module_names", ())) | {"surface_control", "surface_conformance"}:
             errors.append(f"{path.relative_to(root)}: non-stdlib import {imported}")
+    for node in ast.walk(ast.parse(text)):
+        names = [a.name.split(".")[0] for a in node.names] if isinstance(node, ast.Import) else [node.module.split(".")[0]] if isinstance(node, ast.ImportFrom) and node.module else []
+        for name in names:
+            if name not in set(getattr(sys, "stdlib_module_names", ())) | stdlib | {"surface_control", "surface_conformance"}:
+                errors.append(f"{path.relative_to(root)}: non-stdlib import {name}")
     for forbidden in [r"BCR", r"XTouch", r"Behringer", r"bcr2000", r"xtouch", r"\bpipe\b", r"simulation\.arm"]:
         if re.search(forbidden, text, re.I):
             errors.append(f"{path.relative_to(root)}: host/consumer-specific pattern {forbidden}")
