@@ -23,7 +23,6 @@ The small robot/chassis semantic wrappers retain explicit typed stop and observa
 there is no reason to introduce another public abstraction solely to remove their few repeated
 lines. Shared device control, schemas, registry and event behavior already have both consumers.
 
-Release preparation uses exact Git commit locks and managed build inputs. Actual push, tags,
-and remote version publication are intentionally excluded by workspace instructions. Local
+Release preparation uses exact Git commit locks and managed build inputs. The reviewed implementation has been pushed to all three main branches under explicit user authorization. Version tags and releases remain a separate decision. Local
 macOS software checks do not qualify physical devices; Linux and cross-host integration have
 separate evidence maintained by supervision and each host's handoff records.
