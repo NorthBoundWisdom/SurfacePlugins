@@ -63,6 +63,7 @@ public struct RobotRemoteBinding: RemoteBinding {
         case "surface_robot_acquire":
             guard let token = context.controlToken else { throw PluginError(code: .permissionDenied) }
             let grant = try next.simulator.acquire(generation: a.string("generation"), owner: a.string("owner"), ttl: a.number("ttl_s"), controlToken: token)
+            _ = try next.simulationEvent(at: context.time)
             response = try .encoded(grant); plugin = next; return response
         case "surface_robot_enable": try next.simulator.enable(proof(a))
         case "surface_robot_renew": try next.simulator.renew(proof(a), ttl: a.number("ttl_s"))
@@ -73,6 +74,7 @@ public struct RobotRemoteBinding: RemoteBinding {
         case "surface_robot_reset": try next.simulator.reset(generation: a.string("generation"))
         default: throw PluginError(code: .unsupported)
         }
+        _ = try next.simulationEvent(at: context.time)
         response = try .encoded(next.simulator.snapshot()); plugin = next; return response
     }
 }

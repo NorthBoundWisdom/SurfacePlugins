@@ -114,3 +114,48 @@ final class MotionCadenceBoundaryTests: XCTestCase {
         try simulator.advance(0.1)
     }
 }
+
+final class CommandBaselineTests: XCTestCase {
+    func testTypedCommandObservationPreventsDuplicateIdleEvent() throws {
+        var robot = try RobotPlugin(instanceID: "robot")
+        _ = try robot.handle(.start, at: 0)
+        try robot.simulator.initialize([0,0,0,0,0,0], generation: robot.simulator.control.generation)
+        _ = try robot.simulationEvent(at: 0)
+        _ = try robot.simulator.acquire(generation: robot.simulator.control.generation, owner: "test", ttl: 1, controlToken: "secret")
+        XCTAssertNotNil(try robot.simulationEvent(at: 0)) // explicit command event is logged by the host
+        XCTAssertTrue(try robot.handle(.advance, at: 0.02).events.isEmpty)
+        var chassis = try ChassisPlugin(instanceID: "chassis")
+        _ = try chassis.handle(.start, at: 0)
+        try chassis.simulator.initialize([0,0,0], generation: chassis.simulator.control.generation)
+        _ = try chassis.simulationEvent(at: 0)
+        _ = try chassis.simulator.acquire(generation: chassis.simulator.control.generation, owner: "test", ttl: 1, controlToken: "secret")
+        XCTAssertNotNil(try chassis.simulationEvent(at: 0))
+        XCTAssertTrue(try chassis.handle(.advance, at: 0.02).events.isEmpty)
+    }
+    func testRemoteCommandsSynchronizePolicyWithoutDuplicateIdleEvents() throws {
+        for domain in ["robot", "chassis"] {
+            var registry = try RemoteRegistry(epoch: "test")
+            if domain == "robot" {
+                var plugin = try RobotPlugin(instanceID: domain); _ = try plugin.handle(.start, at: 0)
+                try registry.install(RobotRemoteBinding(instanceID: domain, plugin: plugin))
+            } else {
+                var plugin = try ChassisPlugin(instanceID: domain); _ = try plugin.handle(.start, at: 0)
+                try registry.install(ChassisRemoteBinding(instanceID: domain, plugin: plugin))
+            }
+            let state = try registry.call("surface_"+domain+"_snapshot", arguments: .object(["instance_id": .string(domain)]), context: .init(time: 0))
+            let generation = try XCTUnwrap(state.objectValue?["metadata"]?.objectValue?["generation"])
+            let initialized = try registry.call("surface_"+domain+"_initialize", arguments: .object([
+                "instance_id": .string(domain), "generation": generation,
+                domain == "robot" ? "joints_rad" : "pose_m_rad": .array(Array(repeating: .number(0), count: domain == "robot" ? 6 : 3))
+            ]), context: .init(time: 0))
+            let nextGeneration = try XCTUnwrap(initialized.objectValue?["metadata"]?.objectValue?["generation"])
+            _ = try registry.call("surface_"+domain+"_acquire", arguments: .object([
+                "instance_id": .string(domain), "generation": nextGeneration, "owner": .string("test"), "ttl_s": .number(1)
+            ]), context: .init(time: 0, controlToken: "secret"))
+            let before = try registry.journal.read(epoch: "test", after: 0)
+            XCTAssertEqual(before.events.count, 2)
+            _ = try registry.handle(instanceID: domain, input: .advance, at: 0.02)
+            XCTAssertEqual(try registry.journal.read(epoch: "test", after: 0), before)
+        }
+    }
+}
