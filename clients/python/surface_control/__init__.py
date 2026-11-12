@@ -1,4 +1,4 @@
-"""Optional Surface Control client for contracts 1.0 and 1.1. Standard library only; no command retries.
+"""Optional Surface Control client for contracts 1.0, 1.1 and 1.2. Standard library only; no command retries.
 
 This is the single shared SDK source (SurfacePlugins `clients/python`). Hosts copy it from their
 managed dependency into their delivery; they do not keep their own copy. It is separate from any
@@ -17,8 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-__version__ = "1.1.0"
-CONTRACT_VERSIONS = ("1.0", "1.1")
+__version__ = "1.2.0"
+CONTRACT_VERSIONS = ("1.0", "1.1", "1.2")
 PROTOCOL = "2025-11-25"
 PROTOCOLS = ("2025-11-25", "2026-07-28")
 MAX_BYTES = 8 * 1024 * 1024
@@ -104,6 +104,9 @@ def mapping_document(profile):
         if control.get("mapping") is not None:
             require(isinstance(control["mapping"], dict), "invalid_profile")
             row["mapping"] = {name: control["mapping"].get(name) for name in ("kind", "id")}
+        if "accepts_input" in control:
+            require(type(control["accepts_input"]) is bool, "invalid_profile")
+            row["accepts_input"] = control["accepts_input"]
         if control.get("hold") is not None:
             require(isinstance(control["hold"], dict), "invalid_profile")
             row["hold"] = {name: control["hold"].get(name) for name in ("rest_value", "max_hold_s")}
@@ -135,6 +138,22 @@ def admits(control, value):
     if step is None or value in (low, high):
         return True
     return finite(step) and step > 0 and round(value / step) * step == value
+
+
+def accepts_input(control):
+    """Return True/False for a declared input policy, or None for legacy undeclared policy."""
+    require(isinstance(control, dict), "invalid_profile")
+    if "accepts_input" not in control:
+        return None
+    require(type(control["accepts_input"]) is bool, "invalid_profile")
+    return control["accepts_input"]
+
+
+def validate_input_declarations(profile):
+    """Reject partial declarations or fields without controls.input_declared capability."""
+    declared = "controls.input_declared" in profile.get("capabilities", [])
+    for control in profile["controls"]:
+        require((accepts_input(control) is not None) == declared, "invalid_profile")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -330,8 +349,9 @@ class Client:
             and all(isinstance(item, str) and item for item in profile.get("capabilities", [])),
             "unsupported_profile",
         )
-        if value["contract_version"] == "1.1":
+        if value["contract_version"] in ("1.1", "1.2"):
             require(mapping_revision(profile) == expected["mapping_revision"], "invalid_identity")
+        validate_input_declarations(profile)
         latest = cursor(value.get("latest_sequence"))
         require(self.latest_sequence is None or latest >= cursor(self.latest_sequence), "sequence_rollback")
         if self.expected is not None:
@@ -345,6 +365,10 @@ class Client:
         rows = [row for row in self.profile["controls"] if isinstance(row, dict) and row.get("id") == control_id]
         require(len(rows) == 1, "unsupported_control")
         return rows[0]
+
+    def accepts_input(self, control_id):
+        """True/False declaration, or None when the host leaves input policy undeclared."""
+        return accepts_input(self.control(control_id))
 
     def _observe_time(self, value):
         require(finite(value) and (self.server_time is None or value >= self.server_time), "time_rollback")
@@ -366,13 +390,22 @@ class Client:
         self.latest_sequence = value["latest_sequence"]
         return value
 
-    def mutate(self, suffix, fields, extra=None):
+    def refresh_sequence(self):
+        """Read one snapshot and return its highwater. Never replay a mutation.
+
+        stale_sequence means the input was not executed. The caller may explicitly submit a
+        new input after this read. A transport failure is an unknown outcome; never retry it.
+        Existing identity, monotonic time and sequence fences are checked by snapshot().
+        """
+        return self.snapshot()["latest_sequence"]
+
+    def mutate(self, suffix, fields, extra=None, *, sequenced=True):
         require(self.expected is not None and self.latest_sequence is not None, "not_initialized")
         before = cursor(self.latest_sequence)
-        value = self.call(
-            "surface_control_" + suffix,
-            {"expected": self.expected, "expected_sequence": self.latest_sequence, **fields, **(extra or {})},
-        )
+        arguments = {"expected": self.expected, **fields, **(extra or {})}
+        if sequenced:
+            arguments["expected_sequence"] = self.latest_sequence
+        value = self.call("surface_control_" + suffix, arguments)
         if suffix == "reset":
             require(
                 value.get("source") == "simulation"
@@ -388,7 +421,7 @@ class Client:
                 and value.get("latest_sequence") == "0",
                 "invalid_response",
             )
-            if value.get("contract_version") == "1.1":
+            if value.get("contract_version") in ("1.1", "1.2"):
                 require(mapping_revision(value.get("profile")) == value["expected"].get("mapping_revision"), "invalid_identity")
             self.expected, self.latest_sequence = value["expected"], "0"
             self.profile = value.get("profile", self.profile)
@@ -396,7 +429,7 @@ class Client:
             require(
                 value.get("expected") == self.expected
                 and value.get("source") == "simulation"
-                and cursor(value.get("sequence")) == before + 1
+                and (cursor(value.get("sequence")) == before + 1 if sequenced else cursor(value.get("sequence")) > before)
                 and finite(value.get("time"))
                 and value.get("origin") == "remote"
                 and value.get("kind") == suffix
@@ -413,12 +446,22 @@ class Client:
         """Submit one input. `hold_s` (contract 1.1) requests a lease; the host returns `hold_deadline`."""
         extra = None
         if hold_s is not None:
-            require(finite(hold_s) and hold_s > 0 and self.contract_version == "1.1", "unsupported_hold")
+            require(finite(hold_s) and hold_s > 0 and self.contract_version in ("1.1", "1.2"), "unsupported_hold")
             extra = {"hold_s": hold_s}
         return self.mutate("input", {"control_id": control_id, "encoding": encoding, "value": value}, extra)
 
-    def feedback(self, control_id, kind, value):
-        return self.mutate("feedback", {"control_id": control_id, "kind": kind, "value": value})
+    def feedback(self, control_id, kind, value, *, sequenced=None):
+        """Default to no CAS when feedback.unsequenced is advertised; still consumes a sequence.
+
+        sequenced=True explicitly retains legacy CAS. False requires the advertised capability.
+        The returned event may skip local sequences when another writer committed concurrently.
+        """
+        require(self.profile is not None, "not_initialized")
+        supported = "feedback.unsequenced" in self.profile.get("capabilities", [])
+        require(sequenced is None or type(sequenced) is bool, "invalid_argument")
+        sequenced = not supported if sequenced is None else sequenced
+        require(sequenced or supported, "unsupported_feedback")
+        return self.mutate("feedback", {"control_id": control_id, "kind": kind, "value": value}, sequenced=sequenced)
 
     def reset(self):
         return self.mutate("reset", {})
@@ -428,7 +471,7 @@ class Client:
 
         `hold_expired` means the lease is gone: the host restored the rest value. Prepare a new input.
         """
-        require(self.expected is not None and self.contract_version == "1.1", "unsupported_hold")
+        require(self.expected is not None and self.contract_version in ("1.1", "1.2"), "unsupported_hold")
         require(finite(hold_s) and hold_s > 0, "invalid_argument")
         value = self.call(
             "surface_control_renew", {"expected": self.expected, "control_id": control_id, "hold_s": hold_s}
@@ -460,6 +503,10 @@ class EventCursor:
         self.invalidated = False
         self.last_clock = None
         self.last_event_time = None
+        self.holds = {}
+        self.holds_server_time = None
+        self.holds_request_started_monotonic = None
+        self.holds_received_monotonic = None
 
     def bootstrap(self, snapshot):
         """Start after a snapshot's highwater. Historical events are deliberately discarded."""
@@ -541,6 +588,12 @@ class EventCursor:
             )
         latest = cursor(page.get("latest_sequence"))
         require(latest >= self.sequence and (events or latest == self.sequence), "event_gap")
+        holds = page.get("holds", {})
+        require(isinstance(holds, dict) and all(isinstance(key, str) and finite(item) for key, item in holds.items()), "invalid_events")
+        self.holds = dict(holds)
+        self.holds_server_time = page["server_time"]
+        self.holds_request_started_monotonic = started
+        self.holds_received_monotonic = received
         self.client.latest_sequence = str(latest)
         return entries
 
@@ -713,6 +766,8 @@ __all__ = [
     "EventCursor",
     "SurfaceError",
     "admits",
+    "accepts_input",
+    "validate_input_declarations",
     "mapping_document",
     "mapping_revision",
     "__version__",

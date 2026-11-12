@@ -14,6 +14,8 @@ from surface_control import (  # noqa: E402
     SurfaceError,
     __version__,
     admits,
+    accepts_input,
+    validate_input_declarations,
     mapping_document,
     mapping_revision,
 )
@@ -47,7 +49,7 @@ def discovery(contract="1.0", prof=None):
         "expected": {
             "instance_id": "A",
             "epoch": "epoch",
-            "mapping_revision": mapping_revision(prof) if contract == "1.1" else "map",
+            "mapping_revision": mapping_revision(prof) if contract in ("1.1", "1.2") else "map",
             "profile_id": prof["id"],
             "profile_version": prof["version"],
         },
@@ -161,7 +163,7 @@ class MappingRevisionTests(unittest.TestCase):
 
 class ClientTests(unittest.TestCase):
     def test_version(self):
-        self.assertEqual(__version__, "1.1.0")
+        self.assertEqual(__version__, "1.2.0")
 
     def test_profile_allowlist_is_caller_owned(self):
         client = Fixture()
@@ -182,9 +184,9 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(SurfaceError):
             Fixture("1.1").discover(versions=("1.0",))
         with self.assertRaises(SurfaceError):
-            Fixture("1.2").discover()
+            Fixture("1.3").discover()
         with self.assertRaises(SurfaceError):
-            Fixture().discover(versions=("1.2",))
+            Fixture().discover(versions=("1.3",))
 
     def test_contract_1_1_requires_derived_mapping_revision(self):
         client = Fixture("1.1")
@@ -311,6 +313,186 @@ class ClientTests(unittest.TestCase):
         self.assertFalse(admits(control, True))
         self.assertTrue(admits({"encoding": "boolean"}, False))
         self.assertFalse(admits({"encoding": "boolean"}, 0))
+
+
+class V12Tests(unittest.TestCase):
+    def client(self, *, unsequenced=True):
+        prof = profile(version="1.2")
+        prof["capabilities"].append("controls.input_declared")
+        if unsequenced:
+            prof["capabilities"].append("feedback.unsequenced")
+        for control in prof["controls"]:
+            control["accepts_input"] = control["id"] != "cancel"
+        client = Fixture("1.2", prof)
+        client.discover()
+        return client
+
+    def reply(self, client, suffix="feedback", sequence="1"):
+        return {"expected": client.expected, "source": "simulation", "sequence": sequence,
+                "time": 1, "origin": "remote", "kind": suffix, "disposition": "accepted",
+                "control_id": "arm", "encoding": "indicator" if suffix == "feedback" else "scalar",
+                "value": "on" if suffix == "feedback" else 127}
+
+    def test_same_swift_v12_hash_and_absent_field_preserves_legacy_hash(self):
+        prof = {"controls": [{"id": "button", "input_kind": "button", "encoding": "boolean",
+                             "feedback_kinds": ["indicator"], "hold": {"rest_value": False, "max_hold_s": 2},
+                             "accepts_input": True}]}
+        self.assertEqual(mapping_revision(prof), "d7291a4e96e8aba4")
+        prof["controls"][0]["accepts_input"] = False
+        self.assertNotEqual(mapping_revision(prof), "d7291a4e96e8aba4")
+        # The unchanged v1.1 example hash remains pinned by MappingRevisionTests.
+
+    def test_discovery_and_input_declaration_helpers_reject_half_declarations(self):
+        client = self.client()
+        self.assertIs(client.accepts_input("arm"), True)
+        self.assertIs(client.accepts_input("cancel"), False)
+        self.assertIsNone(accepts_input({"id": "legacy"}))
+        for mutate in (
+            lambda p: p["controls"][0].pop("accepts_input"),
+            lambda p: p["controls"][0].__setitem__("accepts_input", 1),
+            lambda p: p["capabilities"].remove("controls.input_declared"),
+        ):
+            bad = copy.deepcopy(client.prof)
+            mutate(bad)
+            with self.assertRaises(SurfaceError) as error:
+                validate_input_declarations(bad)
+            self.assertEqual(error.exception.code, "invalid_profile")
+            with self.assertRaises(SurfaceError):
+                Fixture("1.2", bad).discover()
+
+    def test_v12_discovery_still_pins_mapping(self):
+        client = self.client()
+        value = client.disc()
+        value["expected"]["mapping_revision"] = "0000000000000000"
+        client.response_override = value
+        with self.assertRaises(SurfaceError) as error:
+            client.discover()
+        self.assertEqual(error.exception.code, "invalid_identity")
+
+    def test_feedback_default_unsequenced_accepts_concurrent_sequence_jump(self):
+        client = self.client()
+        sent = []
+        client.call = lambda name, arguments=None: (sent.append((name, arguments)), self.reply(client, sequence="3"))[1]
+        self.assertEqual(client.feedback("arm", "indicator", "on")["sequence"], "3")
+        self.assertEqual(client.latest_sequence, "3")
+        self.assertNotIn("expected_sequence", sent[0][1])
+        self.assertEqual(len(sent), 1)
+
+    def test_feedback_legacy_or_explicit_cas_keeps_exact_successor(self):
+        for contract in ("1.0", "1.1", "1.2"):
+            client = self.client(unsequenced=False) if contract == "1.2" else Fixture(contract)
+            if contract != "1.2":
+                client.discover()
+            sent = []
+            client.call = lambda name, arguments=None: (sent.append(arguments), self.reply(client))[1]
+            client.feedback("arm", "indicator", "on")
+            self.assertEqual(sent[0]["expected_sequence"], "0")
+            with self.assertRaises(SurfaceError):
+                client.feedback("arm", "indicator", "on", sequenced=False)
+        client = self.client()
+        sent = []
+        client.call = lambda name, arguments=None: (sent.append(arguments), self.reply(client, sequence="3"))[1]
+        with self.assertRaises(SurfaceError) as error:
+            client.feedback("arm", "indicator", "on", sequenced=True)
+        self.assertEqual(error.exception.code, "invalid_response")
+        self.assertEqual(sent[0]["expected_sequence"], "0")
+        self.assertEqual(client.latest_sequence, "0")
+
+    def test_unsequenced_feedback_rejects_bad_identity_sequence_and_origin(self):
+        for mutate in (lambda r: r.__setitem__("sequence", "0"),
+                       lambda r: r.__setitem__("expected", {}),
+                       lambda r: r.__setitem__("origin", "hardware")):
+            client = self.client()
+            reply = self.reply(client)
+            mutate(reply)
+            client.call = lambda *_: reply
+            with self.assertRaises(SurfaceError):
+                client.feedback("arm", "indicator", "on")
+            self.assertEqual(client.latest_sequence, "0")
+
+    def test_stale_input_refresh_reads_once_and_only_caller_resubmits(self):
+        client = self.client()
+        original = client.call
+        calls = []
+        def call(name, arguments=None):
+            calls.append((name, arguments))
+            if name.endswith("input"):
+                if arguments["expected_sequence"] == "0":
+                    raise SurfaceError("stale_sequence")
+                return self.reply(client, "input", "3")
+            return original(name, arguments)
+        client.call = call
+        with self.assertRaises(SurfaceError) as error:
+            client.input("arm", "scalar", 127)
+        self.assertEqual(error.exception.code, "stale_sequence")
+        self.assertEqual(client.latest_sequence, "0")
+        client.head = 2
+        self.assertEqual(client.refresh_sequence(), "2")
+        self.assertEqual([name for name, _ in calls], ["surface_control_input", "surface_control_snapshot"])
+        self.assertEqual(client.input("arm", "scalar", 127)["sequence"], "3")
+        self.assertEqual(len(calls), 3)
+
+    def test_refresh_preserves_identity_time_and_sequence_fences(self):
+        for mutate in (lambda r: r["discovery"].__setitem__("expected", {}),
+                       lambda r: r.__setitem__("latest_sequence", "0"),
+                       lambda r: r.__setitem__("server_time", 0)):
+            client = self.client()
+            client.latest_sequence = "1"
+            client.server_time = 1
+            client.head = 1
+            reply = client.call("surface_control_snapshot")
+            mutate(reply)
+            sent = []
+            client.call = lambda name, arguments=None: (sent.append(name), reply)[1]
+            with self.assertRaises(SurfaceError):
+                client.refresh_sequence()
+            self.assertEqual(sent, ["surface_control_snapshot"])
+            self.assertEqual(client.latest_sequence, "1")
+
+    def test_transport_unknown_feedback_never_retries(self):
+        client = self.client()
+        calls = []
+        def fail(name, arguments=None):
+            calls.append(name)
+            raise SurfaceError("transport_unknown")
+        client.call = fail
+        with self.assertRaises(SurfaceError) as error:
+            client.feedback("arm", "indicator", "on")
+        self.assertEqual(error.exception.code, "transport_unknown")
+        self.assertEqual(calls, ["surface_control_feedback"])
+
+    def test_event_cursor_reads_current_holds_without_creating_events_or_fresh_intents(self):
+        client = self.client()
+        events = EventCursor(client, clock=lambda: 1)
+        events.bootstrap(client.snapshot())
+        for holds in ({"arm": 2}, {"arm": 3}, {}):
+            client.response_override = {"expected": client.expected, "latest_sequence": "0", "server_time": 1,
+                                        "events": [], **({"holds": holds} if holds else {})}
+            self.assertEqual(events.poll(), [])
+            self.assertEqual(events.sequence, 0)
+            self.assertEqual(events.holds, holds)
+            self.assertEqual(events.holds_server_time, 1)
+            self.assertEqual(events.holds_request_started_monotonic, 1)
+            self.assertEqual(events.holds_received_monotonic, 1)
+        for bad in ([1], {"arm": float("nan")}, {"arm": "tomorrow"}):
+            client = self.client()
+            events = EventCursor(client, clock=lambda: 1)
+            events.bootstrap(client.snapshot())
+            client.response_override = {"expected": client.expected, "latest_sequence": "0", "server_time": 1,
+                                        "events": [], "holds": bad}
+            with self.assertRaises(SurfaceError) as error:
+                events.poll()
+            self.assertEqual(error.exception.code, "invalid_events")
+            self.assertTrue(events.invalidated)
+
+    def test_v12_hold_input_and_renew_remain_supported(self):
+        client = self.client()
+        reply = self.reply(client, "input")
+        reply["hold_deadline"] = 2
+        client.call = lambda *_: reply
+        self.assertEqual(client.input("arm", "scalar", 127, hold_s=1)["hold_deadline"], 2)
+        client.call = lambda *_: {"control_id": "arm", "hold_deadline": 3, "server_time": 2}
+        self.assertEqual(client.renew("arm", 1)["hold_deadline"], 3)
 
 
 class CursorTests(unittest.TestCase):
