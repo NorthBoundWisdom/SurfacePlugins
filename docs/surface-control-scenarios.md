@@ -1,4 +1,4 @@
-# Reproducible host simulation scenarios, version 1 and 1.1
+# Reproducible host simulation scenarios, versions 1, 1.1 and 1.2
 
 The [1.0 fixture](../fixtures/surface-control-software-v1.json) and the
 [1.1 fixture](../fixtures/surface-control-software-v1.1.json) are neutral versioned test

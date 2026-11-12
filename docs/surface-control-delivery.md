@@ -3,15 +3,16 @@
 A host that delivers a surface control simulator writes `manifest.json` at the root of the
 delivery. The fields below have the same names and meanings in every host, so one consumer
 loader works without host-specific cases. This is a documentation convention; the shared package
-does not generate or check manifests. Hosts may add private fields, and consumers ignore fields
+does not generate manifests. The optional integration loader checks the common version/source/dirty
+fields and every delivery file hash before importing an SDK. Hosts may add private fields, and consumers ignore fields
 they do not know.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `schema_version` | integer | Version of this field convention. Currently `1`. |
 | `artifact` | string | Kind of delivery, for example `surface-control-simulator`. Not a host or product name. |
-| `surface_control_contract` | string | Contract version the host serves, for example `"1.1"`. |
-| `surface_control_sdk` | string | Version of the SDK in the delivery, for example `"1.1.0"`. |
+| `surface_control_contract` | string | Contract version the host serves, for example `"1.2"`. |
+| `surface_control_sdk` | string | Version of the SDK in the delivery, for example `"1.2.0"`. |
 | `source` | string | Always `"simulation"` for these deliveries. |
 | `source_commit` | string | Full 40-character host commit the delivery was built from. |
 | `source_dirty` | boolean | True when the host tree had uncommitted changes. A release delivery has `false`. |
@@ -32,7 +33,7 @@ Rules:
   member without a separate field.
 - `surface_plugins_files_sha256` keys are paths inside the shared package at
   `surface_plugins_revision` (for example `docs/surface-control-tools.json`,
-  `fixtures/surface-control-software-v1.1.json`). Every copy in the delivery is byte-identical.
+  `fixtures/surface-control-software-v1.2.json`). Every copy in the delivery is byte-identical.
 - `profile_id`, `profile_version`, and `mapping_revision` describe the configuration the delivery
   starts by default. A running instance is still pinned through `surface_control_discover`; a
   different configuration yields a different revision there.
@@ -43,3 +44,8 @@ Rules:
 Private fields in use today (not part of the convention, shown so consumers do not rely on them):
 platform, architecture, build configuration, start/stop protocol notes, and a host's own
 provider contract fields.
+
+A host may deliver another manifest for a separate consumer surface. The common fields must
+still be present in root `manifest.json`. In particular, the BCR delivery's Provider 1.0
+manifest includes them alongside its provider fields; `surface-control-manifest.json` is an
+additional file. A generic consumer selects and pins `manifest.json` in either host.
