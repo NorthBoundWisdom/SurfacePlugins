@@ -34,6 +34,20 @@ for path in (root / "Sources").rglob("*.swift"):
     for forbidden in [r"BCR", r"XTouch", r"Behringer", r"CoreMIDI", r"Date\s*\.\s*now", r"Task\s*\.\s*sleep", r"Timer", r"precondition", r"fatalError"]:
         if re.search(forbidden, text, re.I):
             errors.append(f"{path.relative_to(root)}: forbidden pattern {forbidden}")
+for path in [root / "Package.swift", *(root / "Sources").rglob("*.swift")]:
+    # Python clients and consumer integrations are never Swift build inputs.
+    if re.search(r"\b(clients|integrations)/", path.read_text()):
+        errors.append(f"{path.relative_to(root)}: references clients/ or integrations/")
+sdk = root / "clients/python/surface_control"
+stdlib = {"__future__", "json", "math", "re", "time", "urllib"}
+for path in sdk.rglob("*.py"):
+    text = path.read_text()
+    for imported in re.findall(r"^\s*(?:from|import)\s+([A-Za-z_][\w]*)", text, re.M):
+        if imported not in stdlib:
+            errors.append(f"{path.relative_to(root)}: non-stdlib import {imported}")
+    for forbidden in [r"BCR", r"XTouch", r"Behringer", r"bcr2000", r"xtouch", r"\bpipe\b", r"simulation\.arm"]:
+        if re.search(forbidden, text, re.I):
+            errors.append(f"{path.relative_to(root)}: host/consumer-specific pattern {forbidden}")
 package = json.loads(subprocess.check_output(["swift", "package", "dump-package"], cwd=root))
 if package["dependencies"]:
     errors.append("external package dependency")
