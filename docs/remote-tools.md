@@ -77,3 +77,23 @@ simulation control revision changes, including continuous active motion and hidd
 revocation/braking. Event fields contain revision and simulated_time_s, never proof/token.
 Zero-time surface steps and completed-stop idle ticks emit no simulation event. This lets the
 shared registry expose clock-driven actual changes even when semantic indicators stay active.
+
+Pre-release event cadence update: `replace(binding, at: time, event: PluginEvent?)` requires
+explicit time and an explicit optional event. Pass nil for trusted bookkeeping/steady output;
+this still commits the canonical value and advances an independent write clock atomically.
+Every later mutation must have finite nonregressing host time even when no event was stored.
+Read-only calls do not consume that clock. No overload without time is provided.
+
+Simulation notifications compare phase/motion/control/fault/actual facts and exclude revision,
+sequence, time and trace counters. Idle advancement is silent while Provider snapshots/traces
+still update normally. Continuous actual changes are coalesced by motionEventInterval, default
+0.25 seconds (minimum 0.25); critical changes and motion start/end bypass this throttle. Trusted
+typed adapters call `binding.plugin.simulationEvent(at: hostTime)` after simulator changes and
+pass that optional event to replace, using the same filter as handle. Invalid/backward policy
+time is rejected without consuming the observation. Commands remain explicit events.
+
+Default journal capacity is 1024. Two continuously moving instances produce about 8 periodic
+events/second, leaving roughly two minutes plus a small command budget. Retention is approximately
+`capacity / (4 * movingInstances + commandAndCriticalEventsPerSecond)` seconds; additional moving
+instances or commands shorten the window. Capacity remains configurable; increasing it is not a
+substitute for suppressing idle/steady bookkeeping. Clients must still handle gap and old epochs.

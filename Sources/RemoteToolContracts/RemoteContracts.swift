@@ -88,7 +88,8 @@ public struct RemoteArguments: Sendable {
 public struct RemoteRegistry: Sendable {
     private var bindings: [String: any RemoteBinding] = [:]
     public private(set) var journal: RemoteEventJournal
-    public init(epoch: String, eventCapacity: Int = 256) throws { journal = try .init(epoch: epoch, capacity: eventCapacity) }
+    private var lastCommittedTime: PluginTime?
+    public init(epoch: String, eventCapacity: Int = 1024) throws { journal = try .init(epoch: epoch, capacity: eventCapacity) }
     public mutating func install(_ additions: [any RemoteBinding]) throws {
         var next = self
         for binding in additions { try next.install(binding) }
@@ -132,16 +133,23 @@ public struct RemoteRegistry: Sendable {
     }
     /// Atomically commit one trusted typed operation and its observable event.
     /// Event fields must never include tokens, credentials, or command proofs.
-    public mutating func replace(_ binding: any RemoteBinding, at time: PluginTime, event: PluginEvent) throws {
+    public mutating func replace(_ binding: any RemoteBinding, at time: PluginTime, event: PluginEvent?) throws {
         try validateReplacement(binding)
-        guard !event.code.isEmpty else { throw PluginError(code: .invalidParameter) }
-        _ = try JSONEncoder().encode(event)
+        try validateWriteTime(time)
         var nextJournal = journal
-        try nextJournal.append(instanceID: binding.instanceID, event: event, at: time)
-        journal = nextJournal; bindings[binding.instanceID] = binding
+        if let event {
+            guard !event.code.isEmpty else { throw PluginError(code: .invalidParameter) }
+            _ = try JSONEncoder().encode(event)
+            try nextJournal.append(instanceID: binding.instanceID, event: event, at: time)
+        }
+        journal = nextJournal; bindings[binding.instanceID] = binding; lastCommittedTime = time
+    }
+    private func validateWriteTime(_ time: PluginTime) throws {
+        guard time.isFinite, lastCommittedTime.map({ time >= $0 }) ?? true else { throw PluginError(code: .invalidTime) }
     }
     public func binding<P: RemoteBinding>(_ id: String, as type: P.Type) -> P? { bindings[id] as? P }
     public mutating func handle(instanceID: String, input: PluginInput, at time: PluginTime) throws -> PluginUpdate {
+        try validateWriteTime(time)
         guard var binding = bindings[instanceID] else { throw PluginError(code: .unsupported) }
         let before = binding.snapshot()
         let update = try binding.handle(input, at: time)
@@ -149,7 +157,7 @@ public struct RemoteRegistry: Sendable {
         if before != binding.snapshot() || !update.events.isEmpty {
             try nextJournal.append(instanceID: instanceID, event: .init(code: "surface.state.updated"), at: time)
         }
-        journal = nextJournal; bindings[instanceID] = binding
+        journal = nextJournal; bindings[instanceID] = binding; lastCommittedTime = time
         return update
     }
     public func snapshot(instanceID: String) -> PluginSnapshot? { bindings[instanceID]?.snapshot() }
@@ -190,12 +198,15 @@ public struct RemoteRegistry: Sendable {
             return try .encoded(journal.read(epoch: epoch, after: cursor, limit: limit))
         }
         guard let id = arguments.objectValue?["instance_id"]?.stringValue, var binding = bindings[id] else { throw PluginError(code: .unsupported) }
+        let mutation = binding.tools.first(where: { $0.name == name })?.isMutation == true
+        if mutation { try validateWriteTime(context.time) }
         let response = try binding.call(name, arguments: arguments, context: context)
         var nextJournal = journal
-        if binding.tools.first(where: { $0.name == name })?.isMutation == true {
+        if mutation {
             try nextJournal.append(instanceID: id, event: .init(code: name), at: context.time)
         }
         journal = nextJournal; bindings[id] = binding
+        if mutation { lastCommittedTime = context.time }
         return response
     }
 }

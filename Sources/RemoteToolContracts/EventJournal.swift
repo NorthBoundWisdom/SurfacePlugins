@@ -19,7 +19,7 @@ public struct RemoteEventJournal: Sendable {
     public let capacity: Int
     private var records: [RemoteEvent] = []
     private var sequence: UInt64 = 0
-    public init(epoch: String, capacity: Int = 256) throws {
+    public init(epoch: String, capacity: Int = 1024) throws {
         guard !epoch.isEmpty, capacity > 0, capacity <= 65536 else { throw PluginError(code: .invalidParameter) }
         self.epoch = epoch; self.capacity = capacity
     }

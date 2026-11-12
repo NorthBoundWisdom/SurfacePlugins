@@ -9,8 +9,17 @@ public struct ChassisPlugin: ControlPlugin {
     private var started = false
     private var stopping = false
     private var lastTime: Double?
-    public init(deviceID: String = "chassis.reference", model: AckermannModel = .reference, instanceID: String) throws {
+    private var eventPolicy: SimulationEventPolicy
+    public init(deviceID: String = "chassis.reference", model: AckermannModel = .reference, instanceID: String, motionEventInterval: Double = 0.25) throws {
         simulator = try ChassisSimulator(deviceID: deviceID, model: model, instanceID: instanceID)
+        eventPolicy = try .init(initial: Self.eventState(simulator.snapshot()), motionInterval: motionEventInterval)
+    }
+    private static func eventState(_ snapshot: ChassisSnapshot) -> SimulationEventState {
+        .init(metadata: snapshot.metadata, motionActive: snapshot.metadata.state == "running" || snapshot.metadata.state == "stopping", actual: snapshot.actual.map { $0.pose_m_rad + [$0.speed_m_s, $0.steering_angle_rad, $0.yaw_rate_rad_s] + $0.rear_wheel_velocity_rad_s })
+    }
+    /// Typed host adapters call after simulator updates; same filter/throttle as handle.
+    public mutating func simulationEvent(at time: PluginTime) throws -> PluginEvent? {
+        try eventPolicy.update(Self.eventState(simulator.snapshot()), at: time, code: "chassis.simulation.updated")
     }
     /// Remote adapters use the same lifecycle gate as the semantic surface.
     public var acceptsWrites: Bool { started && !stopping }
@@ -30,7 +39,6 @@ public struct ChassisPlugin: ControlPlugin {
     }
     public mutating func handle(_ input: PluginInput, at time: PluginTime) throws -> PluginUpdate {
         guard time.isFinite, lastTime.map({ time >= $0 }) ?? true else { throw PluginError(code: .invalidTime) }
-        let previousRevision = simulator.control.revision
         var next = self
         switch input {
         case .start:
@@ -58,12 +66,9 @@ public struct ChassisPlugin: ControlPlugin {
             guard started && !stopping else { throw PluginError(code: .stopped) }
             throw PluginError(code: .invalidParameter)
         }
+        let event = try next.simulationEvent(at: time)
         next.lastTime = time; self = next
-        let events: [PluginEvent] = simulator.control.revision == previousRevision ? [] : [
-            .init(code: "chassis.simulation.updated", fields: [
-                "revision": .string(String(simulator.control.revision)), "simulated_time_s": .double(simulator.control.time)
-            ])
-        ]
+        let events = event.map { [$0] } ?? []
         return .init(indicators: snapshot().indicators, events: events)
     }
 }
