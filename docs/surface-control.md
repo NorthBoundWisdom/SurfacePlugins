@@ -151,3 +151,48 @@ Behavior changes, each intentional:
 The SDK (`clients/python/surface_control`, version 1.1.0), schemas (`docs/`), and fixtures
 (`fixtures/`) in this repository are the single source. Hosts copy them from their managed
 dependency into deliveries and do not keep their own copies.
+
+## Consumer guidance
+
+These points describe contract 1.1 as published. Items marked "open topic" would need a schema
+change and are not provided in this version.
+
+**Clock conversion.** `server_time`, event `time`, and `hold_deadline` are readings of the
+host's monotonic clock. Their absolute values mean nothing to a client; only differences do.
+To place a deadline on the local monotonic clock, record `t_send` immediately before sending the
+request and `t_recv` when the response arrives. The host read `server_time` somewhere between
+those two instants, so the deadline lies in
+`[t_send + (hold_deadline - server_time), t_recv + (hold_deadline - server_time)]`.
+A consumer that must stop before the host does (a deadman) uses the lower bound,
+`t_send + (hold_deadline - server_time)`; it is early by at most the round trip `t_recv - t_send`.
+Use the same rule for event freshness: an event is at least `server_time - time` old at `t_send`.
+Renew well before the lower bound and never extend a local deadline from a response whose
+`server_time` did not come from the request being measured. Clock rate difference over a lease
+of at most 10 s is negligible next to the round trip.
+
+**Writers and readers.** The contract does not identify remote callers. `origin: remote` covers
+every remote caller with input permission and also the host's own `hold_expired` event, which is
+told apart only by `reason: "hold_expired"`. Any number of clients may read (discover, snapshot,
+events) at once. Writes are serialized by `expected_sequence`: of two concurrent writers one
+gets `stale_sequence`, so the instance behaves as a single-writer journal, but the contract does
+not stop a second authorized client from writing. Run one writer per instance. A read-only
+follower beside the instance owner is allowed; when the owner resets, the epoch changes, the
+follower gets `stale_epoch`, and it must discover and bootstrap again, discarding pending
+intentions. A stable writer identity in events is not provided (open topic).
+
+**Controls without a mapping.** Whether an unmapped control accepts input is a host
+declaration, not a contract rule, and the profile does not mark it. Consumers must not assume
+either way and follow the host's document. At this revision: the BCR host accepts input only on
+a control mapped to a writable, unprotected parameter and otherwise returns `permission_denied`;
+the XTouch host accepts input on unassigned controls and returns `unsupported_mapping` for
+controls bound to an action. A profile field marking which controls accept input is an open topic.
+
+**Renewals and read-only observers.** `surface_control_renew` writes no event and consumes no
+sequence, so an event reader does not see a lease being extended. The `hold_deadline` in the
+acquiring event is only the first deadline. An observer that needs current deadlines reads
+`holds` in the snapshot; the end of a lease is always visible as an input event (a rest input,
+any other accepted input on the control, or `hold_expired`). Carrying leases on event pages is
+an open topic.
+
+The fields of a host delivery manifest are described in
+[surface-control-delivery.md](surface-control-delivery.md).
