@@ -15,6 +15,12 @@ Repository layout beyond Swift targets (never referenced by any Swift target):
 - `integrations/pipe/`: consumer-specific Pipe trial example and test. It is not part of the SDK
   zip or any generic host delivery; see its README for ownership and reset permission.
 
+Importing the SDK straight from a host's managed dependency cache (for example a host test that
+adds `build/dependencies/SurfacePlugins/clients/python` to `sys.path`) must not write bytecode:
+set `PYTHONDONTWRITEBYTECODE=1`, run `python3 -B`, or set `sys.dont_write_bytecode = True` before
+the import. A `__pycache__` directory makes the cache dirty and the host's dependency check fails.
+Importing from a delivered SDK zip writes nothing.
+
 Python checks: `python3 -m unittest discover -s clients/python/tests` and
 `python3 -m unittest discover -s integrations/pipe/tests`.
 
