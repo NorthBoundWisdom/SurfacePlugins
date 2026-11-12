@@ -215,6 +215,36 @@ files remain byte-for-byte unchanged.
 These points describe contract 1.2. The writer-identity open topic needs an agreed identity
 model (issuer and binding to credentials) before a future schema change.
 
+**Shared write budget.** Input, feedback, renewal, and reset calls share the host's per-second
+write limit; both current hosts default to 60 calls/s. A silent renewal still uses that budget,
+and unsequenced feedback does not bypass it. Treat the limit as a ceiling, not a target, and
+leave capacity for operator input and lease renewal. Start display feedback at a fixed 2–5 Hz
+per value, emit only changed values, and reduce the rate when many controls share an instance.
+For example, three changing values at 5 Hz already use 15 calls/s before input or renewal.
+Renew at about one third of the lease duration, well before the conservative local deadline;
+account for every concurrently held control. These rates are recommendations, not additional
+protocol guarantees. If the budget is exhausted, do not automatically replay a lost input or
+extend a lease locally; use the host's result and the existing fail-closed recovery rules.
+
+**Feedback and input CAS.** Unsequenced feedback still consumes the shared journal sequence.
+An input prepared before that feedback can therefore receive `stale_sequence`; this response
+means the input definitely did not execute. Call `refresh_sequence()` to read the current
+highwater, then let the caller decide whether the intention is still current and submit a new
+input explicitly. The SDK never replays the rejected input. More frequent feedback increases
+the chance of these conflicts; change-only, low-frequency feedback reduces them. A feedback
+success may jump the client's CAS highwater over other writers' events. It does not advance an
+existing `EventCursor`: the next poll still reads every event after its own cursor. A transport
+failure instead leaves the mutation outcome unknown and requires reconciliation.
+
+**When hosts declare hold.** A host may advertise a control's `hold` only when the control
+accepts input and restoring its declared `rest_value` makes the bound effect stationary.
+Momentary parameter bindings can satisfy this rule; a toggle whose release does not restore
+the effect, or a control that rejects input, cannot. Consumers may rely on this restoration
+meaning when requesting a lease with `hold_s`, while still observing layer, permission, and
+protection rules. The descriptor alone does not acquire a lease: it is the accepted held input
+that starts one. Expiry restores the simulated bound effect; it is not qualification of a
+physical controller or a replacement for a consumer's own deadman and stop handling.
+
 **Clock conversion.** `server_time`, event `time`, and `hold_deadline` are readings of the
 host's monotonic clock. Their absolute values mean nothing to a client; only differences do.
 To place a deadline on the local monotonic clock, record `t_send` immediately before sending the
