@@ -7,6 +7,8 @@ import subprocess
 
 root = pathlib.Path(__file__).resolve().parents[1]
 allowed = {
+    "SurfaceControlContracts": {"SurfacePluginContracts", "RemoteToolContracts"},
+    "SurfaceControlSchema": {"SurfaceControlContracts", "SurfacePluginContracts"},
     "RemoteToolContracts": {"SurfacePluginContracts"},
     "AgentRemoteBinding": {"SurfacePluginContracts", "RemoteToolContracts", "AgentPlugin"},
     "RobotRemoteBinding": {"SurfacePluginContracts", "RemoteToolContracts", "SimulationContracts", "RobotPlugin"},
