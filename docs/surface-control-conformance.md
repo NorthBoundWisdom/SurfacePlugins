@@ -16,17 +16,30 @@ The report excludes token contents and endpoint headers. Exit status is 1 if any
 0 for a report containing only pass/skip, and 2 for invalid invocation or configuration.
 A zero exit status with skips does not establish complete fixture conformance.
 
-Role map version 1 is a JSON object:
+Role map version 1 is a JSON object. The preferred single-file form selects a strict mapping
+by the fixture's `scenario_id` (the entry has only `roles`); `writer_ids` is shared:
 
 ```json
 {
   "schema_version": 1,
-  "roles": {"input_a": "axis.1", "feedback_state": "lamp.1"},
+  "fixtures": {
+    "surface-control-software-v1": {"roles": {"input_a": "axis.1"}},
+    "surface-control-software-v1.1": {"roles": {"input_a": "axis.1", "hold_input": "touch.1"}},
+    "surface-control-software-v1.2": {"roles": {"input_a": "axis.1", "blocked_input": null}},
+    "surface-control-software-v1.3": {"roles": {"input_a": "axis.1", "blocked_input": null}}
+  },
   "writer_ids": {"remote": "public.remote.principal"}
 }
 ```
 
-`roles` maps fixture role names to discovered control IDs. Omit unavailable roles, or use
+The example is abbreviated: populate every available role in each selected fixture entry.
+Do not copy newer roles into an older fixture's entry. Private/new fixture IDs and role names
+work without a hardcoded role registry. Legacy single-fixture files may instead use top-level
+`roles`, for example `{"schema_version":1,"roles":{"input_a":"axis.1"}}`.
+Exactly one of `roles` and `fixtures` is allowed. There is no fallback between entries.
+
+
+Each selected `roles` dictionary maps fixture role names to discovered control IDs. Omit unavailable roles, or use
 `null`; never map a declared non-input role to an input-enabled descriptor. Descriptor kinds,
 encodings, feedback kinds, hold support, and input declarations are checked against the fixture.
 Mappings must use separate controls for separate roles. `writer_ids` is optional and maps
@@ -71,3 +84,13 @@ evidence; a live report never labels that partial observation as a complete atom
 Skipped steps have `executed: false` and contain no fabricated actual result. For executed
 steps this field means the public operation was attempted, not that a mutation is known to
 have committed (a transport failure still leaves its outcome unknown).
+
+The checker validates each full epoch journal through an isolated SDK `EventCursor`, preserving
+its own fixture CAS. It checks canonical and continuous global/input counters, simulation
+source, identity, kind/origin, monotonic event/server times, ignored reasons, capability-gated
+writer fields and current holds. Descriptors validate event/snapshot values and encodings.
+A mutation reply must match the submitted control/value/encoding and its committed journal
+event, and advance the appropriate highwater. Explicit event reads must match the validated
+journal slice. Reset uses the SDK's validated reset path. These checks apply even when a
+fixture step has no expectation for that field. Reflected credentials and malformed error
+codes become fixed diagnostic codes rather than appearing in reports or CLI output.

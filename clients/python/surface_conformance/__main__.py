@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 from surface_control import Client, SurfaceError
-from surface_conformance import CheckFailure, run_fixture
+from surface_conformance import CheckFailure, run_fixture, safe_error
 
 
 def main():
@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--provider-id")
     parser.add_argument("--provider-header")
     args = parser.parse_args()
+    token = None
     try:
         token = Path(args.token_file).read_text().strip()
         client = Client(args.url, token, args.instance_id, protocol=args.protocol, provider_id=args.provider_id, provider_header=args.provider_header)
@@ -23,7 +24,7 @@ def main():
         Path(args.report).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     except (OSError, ValueError, KeyError, TypeError, SurfaceError, CheckFailure) as exc:
         # Do not stringify arbitrary exceptions: third-party transport messages may include credentials.
-        print("conformance configuration or discovery failed: " + (exc.code if isinstance(exc, SurfaceError) else type(exc).__name__), file=sys.stderr)
+        print("conformance configuration or discovery failed: " + (safe_error(exc, token) if isinstance(exc, SurfaceError) else type(exc).__name__), file=sys.stderr)
         return 2
     print(json.dumps(report["counts"], sort_keys=True))
     return 1 if report["counts"]["fail"] else 0

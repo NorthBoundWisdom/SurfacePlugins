@@ -1,10 +1,14 @@
 """An independent in-memory public-tool host for live checker tests."""
+import contextlib
 import copy
+import io
 import hashlib
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from surface_control import Client, SurfaceError, mapping_revision
@@ -81,7 +85,10 @@ class MemoryHost(Client):
         if self.bad_expectation:
             event["disposition"] = "ignored"
         self.events.append(event)
-        (self.feedback_values if feedback else self.inputs)[row["id"]] = arguments["value"]
+        if feedback:
+            self.feedback_values.setdefault(row["id"], {})[arguments["kind"]] = arguments["value"]
+        else:
+            self.inputs[row["id"]] = arguments["value"]
         return copy.deepcopy(event)
 
 
@@ -179,6 +186,65 @@ class ConformanceTests(unittest.TestCase):
         ]}])
         report = run_fixture(host, raw, host.role_map)
         self.assertEqual([row["status"] for row in report["steps"]], ["skip", "skip", "pass", "pass"])
+
+    def test_one_per_fixture_role_file_runs_all_four_frozen_fixtures(self):
+        host = MemoryHost()
+        documents = [json.loads(path.read_bytes()) for path in sorted((ROOT / "fixtures").glob("surface-control-software-v*.json"))]
+        roles = {"schema_version": 1, "writer_ids": host.role_map["writer_ids"], "fixtures": {doc["scenario_id"]: {"roles": {name: name for name in doc["roles"]}} for doc in documents}}
+        for document in documents:
+            other = MemoryHost()
+            report = run_fixture(other, json.dumps(document).encode(), roles)
+            self.assertEqual(report["counts"]["fail"], 0, document["scenario_id"])
+        wrong = copy.deepcopy(roles)
+        wrong["fixtures"][documents[0]["scenario_id"]]["roles"]["misspelled_role"] = "input_a"
+        with self.assertRaises(CheckFailure):
+            run_fixture(MemoryHost(), json.dumps(documents[0]).encode(), wrong)
+        wrong = dict(roles, roles={})
+        with self.assertRaises(CheckFailure):
+            run_fixture(MemoryHost(), json.dumps(documents[0]).encode(), wrong)
+
+    def test_wire_invariants_reject_corrupt_journal_even_without_fixture_expectations(self):
+        mutations = [lambda e: e.update(source="hardware"), lambda e: e.update(kind="future"),
+                     lambda e: e.update(sequence="02"), lambda e: e.update(sequence="2"),
+                     lambda e: e.update(input_sequence="0"), lambda e: e.pop("writer_id"),
+                     lambda e: e.update(writer_id="invalid id"), lambda e: e.update(control_id="missing"),
+                     lambda e: e.update(encoding="boolean"), lambda e: e.update(origin="hardware"),
+                     lambda e: e.update(time=float("nan"))]
+        for mutate in mutations:
+            host = MemoryHost()
+            original = host.call
+            def call(name, arguments=None):
+                result = original(name, arguments)
+                if name.endswith("input"):
+                    mutate(host.events[-1])
+                    return copy.deepcopy(host.events[-1])
+                return result
+            host.call = call
+            raw = fixture_bytes([{"id": "wire", "steps": [{"operation": "input", "role": "input_a", "value": "maximum", "expect": {}}]}])
+            report = run_fixture(host, raw, host.role_map)
+            self.assertEqual(report["counts"]["fail"], 1, mutate)
+
+    def test_secret_echo_is_absent_from_report_stdout_and_stderr(self):
+        from surface_conformance.__main__ import main
+        host = MemoryHost()
+        host.failure = ("input", host.token)
+        raw = fixture_bytes([{"id": "echo", "steps": [{"operation": "input", "role": "input_a", "value": "maximum", "expect": {}}]}])
+        report = run_fixture(host, raw, host.role_map)
+        self.assertNotIn(host.token, json.dumps(report))
+        self.assertEqual(report["steps"][0]["error"], "credential_reflection")
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / "token").write_text(host.token)
+            (folder / "fixture").write_bytes(raw)
+            (folder / "roles").write_text(json.dumps(host.role_map))
+            argv = ["checker", "--url", host.url, "--token-file", str(folder / "token"), "--instance-id", host.instance_id, "--fixture", str(folder / "fixture"), "--roles", str(folder / "roles"), "--report", str(folder / "report")]
+            for failure in (("input", host.token), ("discover", host.token)):
+                host.failure = failure
+                out, err = io.StringIO(), io.StringIO()
+                with mock.patch("sys.argv", argv), mock.patch("surface_conformance.__main__.Client", return_value=host), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                    status = main()
+                self.assertIn(status, (1, 2))
+                self.assertNotIn(host.token, out.getvalue() + err.getvalue() + (folder / "report").read_text())
 
     def test_descriptor_mismatch_is_configuration_failure(self):
         host = MemoryHost()

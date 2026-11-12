@@ -4,8 +4,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 
-from surface_control import CONTRACT_VERSIONS, SurfaceError
+from surface_control import CONTRACT_VERSIONS, EventCursor, SurfaceError, admits, cursor, finite
 
 
 class CheckFailure(Exception):
@@ -17,9 +18,28 @@ def check(condition, message):
         raise CheckFailure(message)
 
 
+def safe_error(error, token=None):
+    code = error.code
+    if not isinstance(code, str) or (token and token in code):
+        return "credential_reflection"
+    return code if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", code) else "untrusted_error"
+
+
+def select_roles(document, fixture):
+    check(isinstance(document, dict) and set(document) <= {"schema_version", "roles", "fixtures", "writer_ids"}, "invalid role map fields")
+    check(type(document.get("schema_version")) is int and document["schema_version"] == 1, "invalid role map version")
+    check(("roles" in document) != ("fixtures" in document), "select exactly one role-map mode")
+    if "fixtures" in document:
+        fixtures = document["fixtures"]
+        check(isinstance(fixtures, dict) and fixture["scenario_id"] in fixtures, "fixture role mapping absent")
+        selected = fixtures[fixture["scenario_id"]]
+        check(isinstance(selected, dict) and set(selected) == {"roles"}, "invalid fixture role entry")
+        document = {"schema_version": 1, "roles": selected["roles"], "writer_ids": document.get("writer_ids", {})}
+    check(isinstance(document.get("roles"), dict), "invalid role dictionary")
+    return document
+
+
 def validate_roles(document, fixture, profile):
-    check(isinstance(document, dict) and set(document) <= {"schema_version", "roles", "writer_ids"}, "invalid role map fields")
-    check(type(document.get("schema_version")) is int and document["schema_version"] == 1 and isinstance(document.get("roles"), dict), "invalid role map version")
     roles = document["roles"]
     check(set(roles) <= set(fixture["roles"]), "unknown role")
     mapped = [v for v in roles.values() if v is not None]
@@ -45,7 +65,8 @@ def validate_roles(document, fixture, profile):
 
 class Runner:
     def __init__(self, client, fixture, roles, fixture_sha256):
-        self.client, self.fixture, self.roles = client, fixture, roles
+        self.client, self.fixture = client, fixture
+        self.roles = select_roles(roles, fixture)
         self.digest = fixture_sha256
         self.last_write = None
 
@@ -63,11 +84,62 @@ class Runner:
 
     def page(self, after="0"):
         snapshot = self.client.snapshot()
+        self.validate_snapshot(snapshot)
         expected = snapshot["discovery"]["expected"]
         page = self.client.call("surface_control_events", {"instance_id": expected["instance_id"], "epoch": expected["epoch"], "after_sequence": after, "limit": 1024})
         check(page.get("expected") == expected, "event identity differs from snapshot")
         check(page.get("latest_sequence") == snapshot["latest_sequence"], "concurrent journal change")
+        # Validate the complete epoch journal using an isolated SDK cursor/cache. This
+        # must not move the runner's explicitly selected fixture CAS or issue another call.
+        validator = copy.copy(self.client)
+        validator.call = lambda *_: page
+        baseline = {"discovery": {"expected": expected}, "latest_sequence": "0"}
+        if "input.independent_sequence" in validator.profile.get("capabilities", []):
+            baseline["latest_input_sequence"] = "0"
+        events = EventCursor(validator, clock=lambda: 0)
+        events.bootstrap(baseline)
+        events.poll()
+        check(events.sequence == cursor(page["latest_sequence"]), "incomplete epoch journal")
+        check(page.get("holds", {}) == snapshot.get("holds", {}), "page and snapshot holds differ")
+        self.validate_holds(snapshot)
+        for event in page["events"]:
+            row = self.controls.get(event["control_id"])
+            check(row is not None, "journal references unknown control")
+            if event["kind"] == "input":
+                check(event.get("encoding") == row["encoding"] and admits(row, event.get("value")), "invalid journal input value or encoding")
+            else:
+                self.validate_feedback(row, event.get("encoding"), event.get("value"))
         return snapshot, page
+
+    def validate_snapshot(self, snapshot):
+        discovery = snapshot["discovery"]
+        check(discovery.get("contract_version") == self.client.contract_version and discovery.get("profile") == self.client.profile, "snapshot profile or contract changed")
+        check(discovery.get("latest_sequence") == snapshot["latest_sequence"], "snapshot discovery highwater differs")
+        for ident, value in snapshot["inputs"].items():
+            check(ident in self.controls and admits(self.controls[ident], value), "invalid snapshot input")
+        for ident, values in snapshot["feedback"].items():
+            check(ident in self.controls and isinstance(values, dict), "invalid snapshot feedback control")
+            for kind, value in values.items():
+                self.validate_feedback(self.controls[ident], kind, value)
+        self.validate_holds(snapshot)
+
+    def validate_feedback(self, row, kind, value):
+        check(kind in row.get("feedback_kinds", []), "invalid feedback kind")
+        if kind == "indicator":
+            check(value in ("off", "on", "blink"), "invalid feedback indicator")
+        elif kind == "value":
+            descriptor = {**row, "range": row.get("feedback_range", row.get("range"))}
+            if descriptor.get("range") is not None:
+                descriptor["encoding"] = "scalar"
+            check(admits(descriptor, value), "invalid feedback value")
+        else:
+            raise CheckFailure("unsupported feedback kind")
+
+    def validate_holds(self, snapshot):
+        for ident, deadline in snapshot.get("holds", {}).items():
+            row = self.controls.get(ident)
+            check("input.hold" in self.client.profile.get("capabilities", []) and row is not None and "hold" in row, "hold capability or control absent")
+            check(finite(deadline) and deadline > snapshot["server_time"], "invalid current hold deadline")
 
     def prepare(self):
         # A fresh SDK identity cache is needed after an authorized reset.
@@ -106,7 +178,9 @@ class Runner:
     def execute(self, step):
         op, client = step["operation"], self.client
         if op in ("snapshot", "refresh_sequence"):
-            return client.snapshot()
+            result = client.snapshot()
+            self.validate_snapshot(result)
+            return result
         if op == "events":
             return client.call("surface_control_events", {"instance_id": client.instance_id, "epoch": client.expected["epoch"], "after_sequence": step["after_sequence"], "limit": 1024})
         if op == "replay_last_write":
@@ -129,13 +203,7 @@ class Runner:
         check(op in ("input", "feedback", "renew", "reset"), "unsupported operation")
         request = ("surface_control_" + op, arguments)
         self.last_write = copy.deepcopy(request)
-        result = client.call(*request)
-        if op == "reset":
-            # Use fresh discovery pin after reset without issuing another mutation.
-            client.expected = None
-            client.latest_sequence = client.latest_input_sequence = None
-            client.server_time = None
-            client.discover()
+        result = client.reset() if op == "reset" else client.renew(arguments["control_id"], arguments["hold_s"]) if op == "renew" else client.call(*request)
         return result
 
     def verify(self, step, result, error, before, after):
@@ -145,6 +213,15 @@ class Runner:
         events = page["events"]
         count = lambda rows: sum(row.get("kind") == "input" and row.get("disposition") == "accepted" for row in rows)
         actual = {}
+        if error is None and step["operation"] in ("snapshot", "refresh_sequence"):
+            fields = ("discovery", "latest_sequence", "latest_input_sequence", "inputs", "feedback", "holds")
+            check(all(result.get(field) == snap.get(field) for field in fields), "snapshot result differs from following observation")
+        if error is None and step["operation"] == "events":
+            expected_events = [row for row in events if cursor(row["sequence"]) > cursor(step["after_sequence"])]
+            check(result.get("events") == expected_events, "event operation differs from validated epoch journal")
+            for field in ("expected", "latest_sequence", "latest_input_sequence", "holds"):
+                check(result.get(field, {} if field == "holds" else None) == page.get(field, {} if field == "holds" else None), "event page metadata differs")
+            check(finite(result.get("server_time")) and prior["server_time"] <= result["server_time"] <= page["server_time"], "invalid event page time")
         if error is None and step["operation"] in ("input", "feedback"):
             arguments = self.last_write[1]
             check(result.get("expected") == snap["discovery"]["expected"], "mutation identity differs from snapshot")
@@ -153,6 +230,9 @@ class Runner:
             for field in ("control_id", "value"):
                 check(result.get(field) == arguments[field], "mutation result differs from request: " + field)
             check(result.get("encoding") == arguments.get("encoding", arguments.get("kind")), "mutation encoding differs")
+            check(cursor(result.get("sequence")) > cursor(prior["latest_sequence"]), "mutation returned an old journal event")
+            if "expected_sequence" in arguments:
+                check(cursor(result["sequence"]) == cursor(prior["latest_sequence"]) + 1, "sequenced mutation skipped a journal sequence")
             check(any(row == result for row in events), "mutation response differs from committed journal event")
         if error is None and step["operation"] == "reset":
             check(result.get("expected") == snap["discovery"]["expected"], "reset response identity differs")
@@ -247,8 +327,9 @@ class Runner:
                             try:
                                 before = self.prepare()
                             except SurfaceError as exc:
-                                if exc.code in ("permission_denied", "simulation_admin_disabled", "reset_disabled"):
-                                    entry["reason"] = "reset unavailable: " + exc.code
+                                code = safe_error(exc, self.client.token)
+                                if code in ("permission_denied", "simulation_admin_disabled", "reset_disabled"):
+                                    entry["reason"] = "reset unavailable: " + code
                                     dependency = entry["reason"]
                                     failed = True
                                     report["steps"].append(entry)
@@ -259,9 +340,9 @@ class Runner:
                         try:
                             result = self.execute(step)
                         except SurfaceError as exc:
-                            if exc.code in ("transport_unknown", "invalid_response", "rpc_error", "session_changed", "provider_mismatch", "redirect_refused") or exc.code.startswith("http_"):
-                                raise
-                            error = exc.code
+                            error = safe_error(exc, self.client.token)
+                            if error in ("transport_unknown", "invalid_response", "rpc_error", "session_changed", "provider_mismatch", "redirect_refused", "credential_reflection", "untrusted_error") or error.startswith("http_"):
+                                raise SurfaceError(error) from None
                         if error:
                             entry["error"] = error
                         if "disposition" in result:
@@ -274,9 +355,9 @@ class Runner:
                             dependency = None
                     except (SurfaceError, CheckFailure) as exc:
                         entry["status"] = "fail"
-                        entry["reason"] = exc.code if isinstance(exc, SurfaceError) else str(exc)
+                        entry["reason"] = safe_error(exc, self.client.token) if isinstance(exc, SurfaceError) else str(exc)
                         if isinstance(exc, SurfaceError):
-                            entry["error"] = exc.code
+                            entry["error"] = safe_error(exc, self.client.token)
                         dependency = "prior failed step; scenario stopped"
                         failed = True
                 report["steps"].append(entry)
