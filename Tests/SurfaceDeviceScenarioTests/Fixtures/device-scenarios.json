@@ -1,0 +1,458 @@
+{
+  "schema_version": 1,
+  "source": "simulation",
+  "scenarios": [
+    {
+      "id": "agent_surface_actions",
+      "domain": "agent",
+      "steps": [
+        {
+          "at": 0,
+          "op": "input",
+          "control": "primary",
+          "value": true,
+          "expect": {
+            "agent_state": "queued",
+            "command_count": 1
+          }
+        },
+        {
+          "at": 0.1,
+          "op": "replay",
+          "expect": {
+            "commands_unchanged": true,
+            "agent_state": "queued"
+          }
+        },
+        {
+          "at": 0.5,
+          "op": "advance",
+          "expect": {
+            "agent_state": "running"
+          }
+        },
+        {
+          "at": 0.51,
+          "op": "publish",
+          "expect": {
+            "commands_unchanged": true,
+            "feedback_matches_actual": true
+          }
+        },
+        {
+          "at": 0.6,
+          "op": "input",
+          "control": "stop",
+          "value": true,
+          "expect": {
+            "agent_state": "interrupted"
+          }
+        },
+        {
+          "at": 0.7,
+          "op": "replay",
+          "expect": {
+            "commands_unchanged": true
+          }
+        },
+        {
+          "at": 0.8,
+          "op": "reset",
+          "expect": {
+            "latched": true
+          }
+        },
+        {
+          "at": 0.9,
+          "op": "stale",
+          "expect": {
+            "error": "stale_epoch",
+            "commands_unchanged": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "robot_surface_target_and_braking",
+      "domain": "robot",
+      "steps": [
+        {
+          "at": 0,
+          "op": "input",
+          "control": "enable",
+          "value": false,
+          "expect": {
+            "latched": true
+          }
+        },
+        {
+          "at": 0.01,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "expect": {
+            "enabled": true
+          }
+        },
+        {
+          "at": 0.02,
+          "op": "input",
+          "control": "axis",
+          "value": 100,
+          "expect": {
+            "target_actual_distinct": true,
+            "actual_zero": true
+          }
+        },
+        {
+          "at": 0.12,
+          "op": "advance",
+          "expect": {
+            "actual_positive": true,
+            "target_actual_distinct": true
+          }
+        },
+        {
+          "at": 0.13,
+          "op": "publish",
+          "expect": {
+            "feedback_matches_actual": true,
+            "commands_unchanged": true,
+            "input_axis": 100
+          }
+        },
+        {
+          "at": 0.14,
+          "op": "input",
+          "control": "stop",
+          "value": true,
+          "expect": {
+            "enabled": false,
+            "latched": true,
+            "moving": true
+          }
+        },
+        {
+          "at": 1,
+          "op": "advance",
+          "expect": {
+            "stopped": true
+          }
+        },
+        {
+          "at": 1.01,
+          "op": "replay",
+          "expect": {
+            "commands_unchanged": true,
+            "stopped": true
+          }
+        },
+        {
+          "at": 1.02,
+          "op": "reset",
+          "expect": {
+            "latched": true
+          }
+        },
+        {
+          "at": 1.03,
+          "op": "stale",
+          "expect": {
+            "error": "stale_epoch",
+            "commands_unchanged": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "chassis_surface_deadman_and_disconnect",
+      "domain": "chassis",
+      "steps": [
+        {
+          "at": 0,
+          "op": "input",
+          "control": "enable",
+          "value": false,
+          "expect": {}
+        },
+        {
+          "at": 0.01,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "hold_s": 0.2,
+          "expect": {
+            "enabled": true
+          }
+        },
+        {
+          "at": 0.02,
+          "op": "input",
+          "control": "axis",
+          "value": 100,
+          "expect": {
+            "actual_zero": true,
+            "target_actual_distinct": true
+          }
+        },
+        {
+          "at": 0.12,
+          "op": "advance",
+          "expect": {
+            "actual_positive": true
+          }
+        },
+        {
+          "at": 0.13,
+          "op": "publish",
+          "expect": {
+            "feedback_matches_actual": true,
+            "input_axis": 100
+          }
+        },
+        {
+          "at": 0.22,
+          "op": "advance",
+          "expect": {
+            "enabled": false,
+            "latched": true,
+            "moving": true,
+            "expiry_system_writer": true
+          }
+        },
+        {
+          "at": 0.8,
+          "op": "advance",
+          "expect": {
+            "stopped": true
+          }
+        },
+        {
+          "at": 0.81,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "expect": {
+            "enabled": false,
+            "latched": true
+          }
+        },
+        {
+          "at": 0.82,
+          "op": "input",
+          "control": "enable",
+          "value": false,
+          "expect": {}
+        },
+        {
+          "at": 0.83,
+          "op": "input",
+          "control": "axis",
+          "value": 0,
+          "expect": {}
+        },
+        {
+          "at": 0.84,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "hold_s": 0.5,
+          "expect": {
+            "enabled": true
+          }
+        },
+        {
+          "at": 0.85,
+          "op": "input",
+          "control": "axis",
+          "value": 100,
+          "expect": {}
+        },
+        {
+          "at": 0.95,
+          "op": "advance",
+          "expect": {
+            "actual_positive": true
+          }
+        },
+        {
+          "at": 0.96,
+          "op": "disconnect",
+          "expect": {
+            "enabled": false,
+            "latched": true
+          }
+        },
+        {
+          "at": 1.5,
+          "op": "advance",
+          "expect": {
+            "stopped": true
+          }
+        },
+        {
+          "at": 1.51,
+          "op": "replay",
+          "expect": {
+            "commands_unchanged": true,
+            "stopped": true
+          }
+        },
+        {
+          "at": 1.52,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "expect": {
+            "enabled": false,
+            "latched": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "output_surface_trusted_actual_and_rearm",
+      "domain": "output",
+      "steps": [
+        {
+          "at": 0,
+          "op": "heartbeat",
+          "expect": {}
+        },
+        {
+          "at": 0.01,
+          "op": "input",
+          "control": "enable",
+          "value": false,
+          "expect": {}
+        },
+        {
+          "at": 0.02,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "expect": {
+            "status": "waitingActual",
+            "frame_enabled": false
+          }
+        },
+        {
+          "at": 0.03,
+          "op": "display_override",
+          "value": 100,
+          "expect": {
+            "status": "waitingActual",
+            "frame_enabled": false,
+            "commands_unchanged": true
+          }
+        },
+        {
+          "at": 0.04,
+          "op": "actual",
+          "value": 0,
+          "expect": {
+            "status": "waitingRearm",
+            "frame_enabled": false
+          }
+        },
+        {
+          "at": 0.05,
+          "op": "input",
+          "control": "enable",
+          "value": false,
+          "expect": {
+            "status": "disabled"
+          }
+        },
+        {
+          "at": 0.06,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "expect": {
+            "status": "ready",
+            "frame_enabled": true,
+            "frame_zero": true
+          }
+        },
+        {
+          "at": 0.07,
+          "op": "input",
+          "control": "axis",
+          "value": 100,
+          "expect": {
+            "status": "ready",
+            "limited": true,
+            "target_actual_distinct": true
+          }
+        },
+        {
+          "at": 0.08,
+          "op": "publish",
+          "expect": {
+            "feedback_matches_actual": true,
+            "commands_unchanged": true,
+            "input_axis": 100
+          }
+        },
+        {
+          "at": 0.4,
+          "op": "advance",
+          "expect": {
+            "status": "heartbeatExpired",
+            "frame_enabled": false
+          }
+        },
+        {
+          "at": 0.41,
+          "op": "actual",
+          "value": 0,
+          "expect": {
+            "status": "waitingRearm"
+          }
+        },
+        {
+          "at": 0.42,
+          "op": "input",
+          "control": "enable",
+          "value": false,
+          "expect": {}
+        },
+        {
+          "at": 0.425,
+          "op": "input",
+          "control": "axis",
+          "value": 0,
+          "expect": {}
+        },
+        {
+          "at": 0.43,
+          "op": "input",
+          "control": "enable",
+          "value": true,
+          "expect": {
+            "status": "ready",
+            "frame_zero": true
+          }
+        },
+        {
+          "at": 0.44,
+          "op": "disconnect",
+          "expect": {
+            "status": "disconnected",
+            "frame_enabled": false,
+            "latched": true
+          }
+        },
+        {
+          "at": 0.45,
+          "op": "replay",
+          "expect": {
+            "commands_unchanged": true,
+            "frame_enabled": false
+          }
+        }
+      ]
+    }
+  ]
+}

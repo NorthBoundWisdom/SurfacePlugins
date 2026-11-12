@@ -19,6 +19,7 @@ let package = Package(
                .library(name: "ChassisRemoteBinding", targets: ["ChassisRemoteBinding"]),
                .library(name: "OutputRemoteBinding", targets: ["OutputRemoteBinding"])],
     targets: [
+              .testTarget(name: "SurfaceDeviceScenarioTests", dependencies: ["SurfaceControlContracts", "SurfacePluginContracts", "SimulationContracts", "AgentPlugin", "RobotPlugin", "ChassisPlugin", "ParameterOutputPlugin"], resources: [.copy("Fixtures")]),
               .target(name: "SurfaceControlContracts", dependencies: ["SurfacePluginContracts", "RemoteToolContracts"]),
               .executableTarget(name: "SurfaceControlSchema", dependencies: ["SurfaceControlContracts", "SurfacePluginContracts"]),
               .testTarget(name: "SurfaceControlContractsTests", dependencies: ["SurfaceControlContracts"]),
