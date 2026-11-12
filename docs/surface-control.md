@@ -1,4 +1,4 @@
-# Optional simulation control contract 1.0
+# Optional simulation control contract 1.1
 
 `SurfaceControlContracts` is a Foundation-only value contract for public control discovery,
 simulation inputs, feedback, and a separate bounded control journal. It does not replace
@@ -7,7 +7,7 @@ This delivery identifies every control event as `source: simulation`; it grants 
 controller qualification. The host injects the existing trusted `InputOrigin` separately.
 
 Consumers discover `surface_control_discover({})`. Its result has `schema_version: 1`,
-`contract_version: "1.0"`, `source`, `expected`, and `profile`. Profile IDs and versions are
+`contract_version: "1.1"` (see "Contract 1.1 changes" below), `source`, `expected`, and `profile`. Profile IDs and versions are
 explicit host declarations. Controls have stable string IDs, input kind, encoding, optional
 numeric range/step, feedback kinds, and an optional mapping target. Coordinates, layers,
 device ranges, and layout remain host declarations. Business operations and units belong
@@ -62,7 +62,8 @@ nested identity fields, fractional integer limits, nonfinite values, and oversiz
 Stable contract errors use `ControlContractError.code`: `invalid_argument`, `invalid_profile`,
 `unsupported_tool`, `unsupported_profile`, `unsupported_control`, `unsupported_encoding`,
 `unsupported_feedback`, `invalid_value`, `invalid_result`, `invalid_time`, `instance_mismatch`,
-`stale_epoch`, `stale_mapping`, `stale_sequence`, `invalid_transition`, `event_gap`, and `sequence_exhausted`. Hosts preserve these
+`stale_epoch`, `stale_mapping`, `stale_sequence`, `invalid_transition`, `event_gap`, and `sequence_exhausted`;
+contract 1.1 adds `unsupported_hold`, `hold_expired`, and `hold_expiry_pending`. Hosts preserve these
 codes at their public transport boundary and add their own permission/engine errors.
 
 Changes to required identity or input interpretation require a new contract major.
@@ -71,5 +72,82 @@ profiles, versions, and encodings before submitting any input.
 
 `swift run surface-control-schema` emits the published descriptors.
 `swift run surface-control-schema --examples` emits real typed request/result examples
-for all six tools, including accepted and ignored inputs. Hosts package the generated
+for all seven tools, including accepted and ignored inputs, a held input, a renewal, a snapshot
+with `holds`, and a `hold_expired` event. Hosts package the generated
 schema; validation can use an external JSON Schema validator without a product dependency.
+
+## Contract 1.1 changes
+
+Version policy. `contract_version` is now `"1.1"`; `schema_version` stays `1`. All changes are
+optional and additive: every 1.0 request is still accepted with 1.0 meaning, and responses only
+gain optional fields (`hold`, `hold_deadline`, `holds`) when a 1.1 feature is used. New request
+fields (`hold_s`) and the new tool are rejected by a 1.0 host's strict parser, so a 1.1 consumer
+fails closed against an old host. Consumers allowlist contract versions explicitly.
+
+Behavior changes, each intentional:
+
+1. Mapping revision. `ControlProfile.mappingRevision` is derived from the profile: for each
+   control, the fields `id`, `input_kind`, `encoding`, `range`, `feedback_range`,
+   `feedback_kinds`, `mapping`, and `hold` (absent optional fields omitted, `feedback_kinds`
+   sorted) form an object; the objects are ordered by control ID (Unicode scalar order) and
+   serialized as a JSON array with sorted keys and no whitespace. Numbers that are integral and
+   below 2^53 in magnitude print as integers (`-0` prints `0`), other finite numbers print as
+   the shortest round-trip decimal (Swift `Double.description`, equal to Python `repr(float)`);
+   strings use JSON escapes for `"`, `\`, `\b`, `\f`, `\n`, `\r`, `\t` and `\u00XX` for other
+   control characters, with all other characters as UTF-8. The revision is the FNV-1a 64-bit
+   hash of those UTF-8 bytes as 16 lowercase hex digits. Profile ID, version, capabilities, and
+   control order do not affect it. Hosts must use it; random or constant values are no longer
+   conforming. `SurfaceControlSession(instanceID:epoch:profile:)` and
+   `reset(expected:expectedSequence:epoch:profile:at:)` apply it automatically; the explicit
+   `mappingRevision:` initializers stay for source compatibility. The Python SDK verifies it.
+2. Validation order. `validateExpected` now checks instance, profile, mapping, then epoch. A
+   request whose mapping changed returns `stale_mapping` even though the epoch also changed;
+   `stale_epoch` now means "same mapping, new epoch". Hosts still change epoch on every change.
+3. Capability vocabulary. Registered values: `simulation`, `controls.stable_ids`,
+   `controls.layered`, `input.absolute`, `input.relative`, `input.button`, `input.hold`,
+   `feedback.value`, `feedback.indicator`. Host-private values use `x.<host>.<name>` (for example
+   `x.bcr.indicator_blink_as_on`). `ControlProfile.validate()` rejects any other value and requires
+   consistency: each input kind present needs `input.<kind>`, each feedback kind present needs
+   `feedback.<kind>`, a `hold` descriptor needs `input.hold`, and `input.hold` needs at least one
+   control with `hold`. **This deliberately makes the current host profiles invalid** (for example
+   `stable_control_ids`, `display_only_feedback`, `absolute_input`, `layered_controls`); hosts adopt the
+   vocabulary when they lock this revision (P2). Until then they must stay on the previous lock.
+4. Numeric normalization. The session stores and emits numbers in one form: integral values
+   representable as `Int` become `.number`, others `.double`, recursively. This applies to
+   `seedInputs`, accepted inputs, feedback values, event `value`, `mapped_value`, and snapshots.
+   `.double(80)` and `.number(80)` are therefore the same state. `isUnchanged(_:)` returns true when
+   accepting the input would change neither the stored value nor any lease (a relative input is
+   unchanged only for a zero delta; an unknown, unseeded value is never unchanged). Hosts use it
+   for `ignored/no_change` instead of comparing `JSONValue`s themselves. Validation is unchanged:
+   off-grid values are still rejected, never rounded.
+5. `input.hold` leases (S5 deadman prerequisite).
+   - Descriptor `hold: {rest_value, max_hold_s}` is allowed on absolute/scalar and button/boolean
+     controls; `rest_value` must be a valid input and `max_hold_s` lies in (0, 10]. Relative
+     controls cannot declare it.
+   - `surface_control_input` accepts optional `hold_s` in (0, max_hold_s]. On a control without
+     `hold` it fails with `unsupported_hold`; a bad duration fails with `invalid_argument`.
+   - An accepted non-rest input with `hold_s` sets `hold_deadline = time + hold_s` (returned in the
+     event). Any other accepted input on that control, including the rest value or a value without
+     `hold_s`, clears the lease. Ignored input leaves the lease unchanged.
+   - `surface_control_renew({expected, control_id, hold_s})` sets the deadline to `time + hold_s`.
+     It takes no `expected_sequence`, consumes no sequence, and writes no event (like D14 silent
+     bookkeeping), but it advances the session write clock. It succeeds only for a held,
+     unexpired lease; otherwise `hold_expired`. Hosts require simulation input permission and count
+     it against the write budget. Returns `{control_id, hold_deadline, server_time}`.
+   - Expiry. `dueHoldExpiries(at:)` is pure and lists leases with deadline <= t (ordered by
+     deadline, then ID) with their rest value. The host applies the rest value to its own engine,
+     then calls `recordHoldExpiry(controlID:mappedValue:at:)`, which writes
+     `kind input / disposition accepted / origin remote / reason "hold_expired"` and stores the
+     rest value. This is the only accepted event with a reason defined by the contract; ordinary
+     `recordInput` keeps its existing reason rules. `nextHoldDeadline` helps hosts schedule.
+   - Fail closed. While any lease with deadline <= t is unprocessed, every session read or write at
+     time t (snapshot, events, input, feedback, renew, reset) fails with `hold_expiry_pending`.
+     Hosts must advance expiries on their own monotonic clock even without requests.
+   - Snapshots include `holds: {control_id: deadline}` when any lease is active. Reset clears all
+     leases (and is itself rejected while an expiry is pending).
+6. Tools. Seven descriptors (adds `surface_control_renew`). Input schemas may now list optional
+   fields; the strict parser still rejects unknown fields and requires every required one.
+
+The SDK (`clients/python/surface_control`, version 1.1.0), schemas (`docs/`), and fixtures
+(`fixtures/`) in this repository are the single source. Hosts copy them from their managed
+dependency into deliveries and do not keep their own copies.

@@ -5,6 +5,19 @@ profiles, typed inputs, feedback, and an independent bounded journal through
 `SurfaceControlContracts`. Its [public tool schemas](docs/surface-control-tools.json) are
 generated with `swift run surface-control-schema`; hosts package the same descriptors.
 
+Repository layout beyond Swift targets (never referenced by any Swift target):
+
+- `clients/python/surface_control/`: the single shared Python SDK (1.1.0, standard library only)
+  for contracts 1.0/1.1, with `clients/python/tests/`. Hosts copy it from their managed
+  dependency into their SDK zip; they do not keep their own copy.
+- `docs/surface-control-tools.json`, `docs/surface-control-scenario.schema.json`, and `fixtures/`:
+  the single source for published schemas and host scenario fixtures.
+- `integrations/pipe/`: consumer-specific Pipe trial example and test. It is not part of the SDK
+  zip or any generic host delivery; see its README for ownership and reset permission.
+
+Python checks: `python3 -m unittest discover -s clients/python/tests` and
+`python3 -m unittest discover -s integrations/pipe/tests`.
+
 Foundation-only Swift 6 value-state plugins. Each product can be imported independently;
 there is no umbrella product. Production plugins depend on SurfacePluginContracts and, for device simulations, the
 Foundation-only SimulationContracts utility. Plugins never import one another.
