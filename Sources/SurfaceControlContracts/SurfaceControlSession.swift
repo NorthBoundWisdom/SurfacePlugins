@@ -78,6 +78,7 @@ public struct SurfaceControlSession: Sendable {
         try validateSequence(input.expected_sequence)
         if let time { try validateTime(time); try validateNoPendingExpiry(at: time) }
         guard let control = profile.controls.first(where: { $0.id == input.control_id }) else { throw ControlContractError("unsupported_control") }
+        guard control.accepts_input != false else { throw ControlContractError("permission_denied") }
         guard input.encoding == control.encoding.rawValue else { throw ControlContractError("unsupported_encoding") }
         guard control.admits(input.value) else { throw ControlContractError("invalid_value") }
         if let seconds = input.hold_s { try validateHoldSeconds(seconds, control: control) }
@@ -89,7 +90,8 @@ public struct SurfaceControlSession: Sendable {
     }
     public func validateFeedback(_ update: ControlFeedback, at time: Double? = nil) throws {
         try validateExpected(update.expected)
-        try validateSequence(update.expected_sequence)
+        if let sequence = update.expected_sequence { try validateSequence(sequence) }
+        else if !profile.capabilities.contains("feedback.unsequenced") { throw ControlContractError("invalid_argument") }
         if let time { try validateTime(time); try validateNoPendingExpiry(at: time) }
         guard let control = profile.controls.first(where: { $0.id == update.control_id }) else { throw ControlContractError("unsupported_control") }
         guard let kind = ControlFeedbackKind(rawValue: update.kind), control.feedback_kinds.contains(kind) else { throw ControlContractError("unsupported_feedback") }
@@ -118,7 +120,7 @@ public struct SurfaceControlSession: Sendable {
         try validateTime(time)
         for (id, value) in values {
             guard let control = profile.controls.first(where: { $0.id == id }) else { throw ControlContractError("unsupported_control") }
-            try validateInput(.init(expected: expected, expectedSequence: "0", controlID: id, encoding: control.encoding.rawValue, value: value), at: time)
+            guard control.admits(value) else { throw ControlContractError("invalid_value") }
         }
         inputs = values.mapValues(Self.normalized); seeded = true; lastTime = time
     }
@@ -211,7 +213,7 @@ public struct SurfaceControlSession: Sendable {
               let cursor = UInt64(afterSequence), String(cursor) == afterSequence, limit > 0, limit <= 1024 else { throw ControlContractError("invalid_argument") }
         let first = records.first.flatMap { UInt64($0.sequence) } ?? sequence
         guard cursor <= sequence, !(cursor < first && first - cursor > 1) else { throw ControlContractError("event_gap") }
-        return .init(server_time: time, expected: expected, latest_sequence: String(sequence), events: Array(records.filter { UInt64($0.sequence)! > cursor }.prefix(limit)))
+        return .init(server_time: time, expected: expected, latest_sequence: String(sequence), events: Array(records.filter { UInt64($0.sequence)! > cursor }.prefix(limit)), holds: holds.isEmpty ? nil : holds)
     }
     /// Contract 1.1 convenience: uses the deterministic mapping revision of the new (or current) profile.
     public mutating func reset(expected old: ControlExpected, expectedSequence: String, epoch: String, profile: ControlProfile? = nil, at time: Double) throws {

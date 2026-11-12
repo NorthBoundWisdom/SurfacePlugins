@@ -58,11 +58,13 @@ public struct ControlDescriptor: Equatable, Codable, Sendable {
     public let mapping: ControlMapping?
     /// Contract 1.1, optional. Absent descriptors encode exactly as contract 1.0.
     public let hold: ControlHold?
+    /// Contract 1.2: absent means input policy is not declared.
+    public let accepts_input: Bool?
     public init(id: String, inputKind: ControlInputKind, encoding: ControlEncoding,
                 range: ControlValueRange? = nil, feedbackRange: ControlValueRange? = nil, feedbackKinds: [ControlFeedbackKind] = [],
-                mapping: ControlMapping? = nil, hold: ControlHold? = nil) {
+                mapping: ControlMapping? = nil, hold: ControlHold? = nil, acceptsInput: Bool? = nil) {
         self.id = id; input_kind = inputKind; self.encoding = encoding; self.range = range
-        feedback_range = feedbackRange; feedback_kinds = feedbackKinds; self.mapping = mapping; self.hold = hold
+        feedback_range = feedbackRange; feedback_kinds = feedbackKinds; self.mapping = mapping; self.hold = hold; accepts_input = acceptsInput
     }
     /// True when `value` is a valid, unclamped input for this control's encoding and range.
     public func admits(_ value: JSONValue) -> Bool {
@@ -77,7 +79,8 @@ public struct ControlDescriptor: Equatable, Codable, Sendable {
 public enum ControlCapability {
     public static let registered: Set<String> = [
         "simulation", "controls.stable_ids", "controls.layered", "input.absolute", "input.relative",
-        "input.button", "input.hold", "feedback.value", "feedback.indicator"
+        "input.button", "input.hold", "feedback.value", "feedback.indicator",
+        "feedback.unsequenced", "controls.input_declared"
     ]
     /// `x.<host>.<name>`: three or more nonempty dot-separated components starting with `x`.
     public static func isHostPrivate(_ value: String) -> Bool {
@@ -126,6 +129,9 @@ public struct ControlProfile: Equatable, Codable, Sendable {
         guard declared.allSatisfy({ ControlCapability.registered.contains($0) || ControlCapability.isHostPrivate($0) }) else {
             throw ControlContractError("invalid_profile")
         }
+        guard controls.allSatisfy({ ($0.accepts_input != nil) == declared.contains("controls.input_declared") }) else {
+            throw ControlContractError("invalid_profile")
+        }
         var required: Set<String> = []
         for control in controls {
             required.insert("input." + control.input_kind.rawValue)
@@ -159,6 +165,7 @@ public enum ControlCanonicalJSON {
                 if let range = control.range { row["range"] = rangeValue(range) }
                 if let range = control.feedback_range { row["feedback_range"] = rangeValue(range) }
                 if let mapping = control.mapping { row["mapping"] = .object(["kind": .string(mapping.kind.rawValue), "id": .string(mapping.id)]) }
+                if let accepts = control.accepts_input { row["accepts_input"] = .bool(accepts) }
                 if let hold = control.hold { row["hold"] = .object(["rest_value": hold.rest_value, "max_hold_s": .double(hold.max_hold_s)]) }
                 return .object(row)
             }
@@ -267,18 +274,18 @@ public struct ControlHoldExpiry: Equatable, Sendable {
 
 public struct ControlFeedback: Equatable, Codable, Sendable {
     public let expected: ControlExpected
-    public let expected_sequence: String
+    public let expected_sequence: String?
     public let control_id: String
     public let kind: String
     public let value: JSONValue
-    public init(expected: ControlExpected, expectedSequence: String, controlID: String, kind: String, value: JSONValue) {
+    public init(expected: ControlExpected, expectedSequence: String? = nil, controlID: String, kind: String, value: JSONValue) {
         self.expected = expected; expected_sequence = expectedSequence; control_id = controlID; self.kind = kind; self.value = value
     }
 }
 
 public struct ControlDiscovery: Equatable, Codable, Sendable {
     /// Additive minor version. `schema_version` stays 1: 1.0 requests remain valid and 1.1 fields are optional.
-    public static let contractVersion = "1.1"
+    public static let contractVersion = "1.2"
     public let schema_version: Int
     public let contract_version: String
     public let source: PluginSource
@@ -323,4 +330,6 @@ public struct ControlEventPage: Equatable, Codable, Sendable {
     public let expected: ControlExpected
     public let latest_sequence: String
     public let events: [ControlEvent]
+    /// Contract 1.2: current leases at page read time, omitted when empty.
+    public let holds: [String: Double]?
 }

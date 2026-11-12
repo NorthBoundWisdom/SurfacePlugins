@@ -1,5 +1,5 @@
 {
-  "contract_version" : "1.1",
+  "contract_version" : "1.2",
   "schema_version" : 1,
   "tools" : [
     {
@@ -73,6 +73,9 @@
                 "items" : {
                   "additionalProperties" : false,
                   "properties" : {
+                    "accepts_input" : {
+                      "type" : "boolean"
+                    },
                     "encoding" : {
                       "minLength" : 1,
                       "type" : "string"
@@ -299,6 +302,9 @@
                     "items" : {
                       "additionalProperties" : false,
                       "properties" : {
+                        "accepts_input" : {
+                          "type" : "boolean"
+                        },
                         "encoding" : {
                           "minLength" : 1,
                           "type" : "string"
@@ -771,7 +777,6 @@
         "required" : [
           "control_id",
           "expected",
-          "expected_sequence",
           "kind",
           "value"
         ],
@@ -1083,6 +1088,12 @@
             ],
             "type" : "object"
           },
+          "holds" : {
+            "additionalProperties" : {
+              "type" : "number"
+            },
+            "type" : "object"
+          },
           "latest_sequence" : {
             "minLength" : 1,
             "type" : "string"
@@ -1208,6 +1219,9 @@
                 "items" : {
                   "additionalProperties" : false,
                   "properties" : {
+                    "accepts_input" : {
+                      "type" : "boolean"
+                    },
                     "encoding" : {
                       "minLength" : 1,
                       "type" : "string"

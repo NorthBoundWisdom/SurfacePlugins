@@ -30,8 +30,9 @@ public enum SurfaceControlTools {
             "range": s.object(["minimum": s.number, "maximum": s.number, "step": s.number], optional: ["step"]),
             "feedback_range": s.object(["minimum": s.number, "maximum": s.number, "step": s.number], optional: ["step"]),
             "feedback_kinds": s.array(s.string), "mapping": s.object(["kind": s.string, "id": s.string]),
-            "hold": s.object(["rest_value": valueSchema, "max_hold_s": s.number])
-        ], optional: ["range", "feedback_range", "mapping", "hold"]))])
+            "hold": s.object(["rest_value": valueSchema, "max_hold_s": s.number]),
+            "accepts_input": s.boolean
+        ], optional: ["range", "feedback_range", "mapping", "hold", "accepts_input"]))])
     }
     private static var discoverySchema: JSONValue {
         let s = RemoteSchema.self
@@ -55,9 +56,10 @@ public enum SurfaceControlTools {
                 "holds": .object(["type": .string("object"), "additionalProperties": s.number])], optional: ["holds"]), isMutation: false),
             .init(name: "surface_control_input", fields: ["expected": expectedSchema, "expected_sequence": s.string, "control_id": s.string, "encoding": s.string, "value": valueSchema, "hold_s": s.number],
                   optional: ["hold_s"], output: eventSchema, isMutation: true),
-            .init(name: "surface_control_feedback", fields: ["expected": expectedSchema, "expected_sequence": s.string, "control_id": s.string, "kind": s.string, "value": valueSchema], output: eventSchema, isMutation: true),
+            .init(name: "surface_control_feedback", fields: ["expected": expectedSchema, "expected_sequence": s.string, "control_id": s.string, "kind": s.string, "value": valueSchema], optional: ["expected_sequence"], output: eventSchema, isMutation: true),
             .init(name: "surface_control_events", fields: ["instance_id": s.string, "epoch": s.string, "after_sequence": s.string, "limit": s.integer], output: s.object([
-                "expected": expectedSchema, "server_time": s.number, "latest_sequence": s.string, "events": s.array(eventSchema)]), isMutation: false),
+                "expected": expectedSchema, "server_time": s.number, "latest_sequence": s.string, "events": s.array(eventSchema),
+                "holds": .object(["type": .string("object"), "additionalProperties": s.number])], optional: ["holds"]), isMutation: false),
             .init(name: "surface_control_reset", fields: ["expected": expectedSchema, "expected_sequence": s.string], output: discoverySchema, isMutation: true),
             // Silent lease renewal: consumes no sequence and writes no event, but needs input permission and write budget.
             .init(name: "surface_control_renew", fields: ["expected": expectedSchema, "control_id": s.string, "hold_s": s.number],

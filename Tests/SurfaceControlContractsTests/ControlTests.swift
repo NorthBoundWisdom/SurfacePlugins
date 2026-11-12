@@ -30,7 +30,7 @@ final class ControlTests: XCTestCase {
             XCTAssertEqual(x.source, .simulation); XCTAssertEqual(x.origin, .remote)
         }
         XCTAssertEqual(try a.snapshot(at: 100).inputs, try b.snapshot(at: 100).inputs)
-        XCTAssertEqual(a.discovery().contract_version, "1.1")
+        XCTAssertEqual(a.discovery().contract_version, "1.2")
         XCTAssertEqual(a.discovery().profile.id, "fixture.alpha")
     }
     func testInputEncodingAndValuesFailWithoutFallbackOrMutation() throws {
