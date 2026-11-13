@@ -371,5 +371,38 @@ current `holds` directly on each events page, including an empty page; a 1.1 obs
 from a snapshot. Rest input or `hold_expired` still provides accepted input evidence for the
 end of a lease. Neither renewal nor the page's lease map alone creates a fresh input intent.
 
+### Choosing hold and renewal periods
+
+Separate operator-to-bridge protection from bridge-to-Worker protection. A held input and its
+renewals bound how long the bridge may treat an operator's intention as current. The consumer's
+watchdog or deadman bounds a loss of commands from the bridge to its Worker. If the bridge
+continues sending commands after the operator disappears, downstream loss-of-command protection
+does not replace expiry of the operator's intention.
+
+Choose `hold_s` from the consumer's end-to-end stop budget, including host expiry processing,
+bridge polling, transport and queueing, and the Worker reaching an observed stationary state.
+For example, one consumer's measured post-expiry chain was 0.225–0.269 s (about 0.23–0.27 s),
+with a measured host expiry-processing delay of up to about 8 ms. For a consumer aiming to stop
+within 500 ms, a 0.2 s hold is only an evaluation starting point: in the worst case the operator
+disappears just after renewal, leaving `0.2 + 0.27 + 0.008 ≈ 0.48 s`, or only about 20 ms of
+margin. Measure the consumer's own post-expiry chain and scheduling variation before choosing
+its hold; that example does not establish a configuration that guarantees 500 ms. This is a
+consumer target, not a contract promise or a hard-real-time guarantee.
+
+Renew at about one third of the hold duration, well before the conservative local deadline
+described under clock conversion. With a 0.2 s hold, a period of about 0.067 s means about
+15 renewals/s for an operator holding one control. Count every concurrently held control and
+budget these writes together with input and display feedback. With `writes.independent_limits`,
+check `renew_per_window` and the other category quotas in the discovered `write_limits`; without
+that capability, check the host's aggregate write budget. The command
+`--write-limits input=60,feedback=20,renew=60,admin=5` is only an example, not a recommended
+capacity or an additional default. Leave room for scheduling jitter and stop/rest input rather
+than treating any quota as a target.
+
+If renewal fails or is rate limited, follow expiry handling and fail closed; never extend a
+local lease on the assumption that renewal succeeded. A transport failure can leave the
+mutation outcome unknown. The SDK does not automatically retry that unknown result: reconcile
+with the host and retain the conservative deadline and existing stop/recovery rules.
+
 The fields of a host delivery manifest are described in
 [surface-control-delivery.md](surface-control-delivery.md).

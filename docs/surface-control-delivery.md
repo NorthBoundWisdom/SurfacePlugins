@@ -41,6 +41,9 @@ Rules:
   `files_sha256` entry before using any file.
 - Integration examples (`integrations/`) and SDK tests are not part of a generic delivery.
 
+Before selecting consumer hold and renewal periods, see
+[Choosing hold and renewal periods](surface-control.md#choosing-hold-and-renewal-periods).
+
 Private fields in use today (not part of the convention, shown so consumers do not rely on them):
 platform, architecture, build configuration, start/stop protocol notes, and a host's own
 provider contract fields.
