@@ -82,6 +82,24 @@ public enum SurfaceControlTools {
                   output: s.object(["control_id": s.string, "hold_deadline": s.number, "server_time": s.number]), isMutation: true)
         ]
     }
+    /// Source-specific output descriptors. The legacy simulation descriptors remain byte-identical.
+    public static func descriptors(source: PluginSource) -> [RemoteToolDescriptor] {
+        guard source == .hardware else { return descriptors }
+        return descriptors.map { tool in
+            var output = tool.outputSchema
+            if ["surface_control_snapshot", "surface_control_events"].contains(tool.name), var fields = output.objectValue,
+               var properties = fields["properties"]?.objectValue, var required = fields["required"]?.arrayValue {
+                properties["link"] = RemoteSchema.object(["state": .object(["type": .string("string"), "enum": .array([.string("connected"), .string("disconnected")])])])
+                required.append(.string("link"))
+                fields["properties"] = .object(properties); fields["required"] = .array(required.sorted { $0.stringValue! < $1.stringValue! })
+                output = .object(fields)
+            }
+            if ["surface_control_input", "surface_control_renew", "surface_control_reset"].contains(tool.name) {
+                output = RemoteSchema.object(["code": RemoteSchema.string])
+            }
+            return .init(name: tool.name, inputSchema: tool.inputSchema, output: output, isMutation: tool.isMutation)
+        }
+    }
     public static func parse(_ name: String, arguments: JSONValue) throws -> ControlToolRequest {
         guard let tool = descriptors.first(where: { $0.name == name }) else { throw ControlContractError("unsupported_tool") }
         guard matches(arguments, schema: tool.inputSchema) else { throw ControlContractError("invalid_argument") }

@@ -1,10 +1,10 @@
-# Optional simulation control contract 1.3
+# Optional surface control contracts 1.3 / 1.4
 
 `SurfaceControlContracts` is a Foundation-only value contract for public control discovery,
 simulation inputs, feedback, and a separate bounded control journal. It does not replace
 Provider 1.0, `surface_capabilities`, `surface_events`, or the plugin business tools.
-This delivery identifies every control event as `source: simulation`; it grants no physical
-controller qualification. The host injects the existing trusted `InputOrigin` separately.
+Simulation sessions identify every event as `source: simulation`. Contract 1.4 expresses hardware
+source; physical qualification still requires attended validation for each device and delivery. The host injects the existing trusted `InputOrigin` separately.
 
 Consumers discover `surface_control_discover({})`. Its result has `schema_version: 1`,
 `contract_version: "1.3"` (see "Contract 1.3 changes" below), `source`, `expected`, and `profile`. Profile IDs and versions are
@@ -406,3 +406,40 @@ with the host and retain the conservative deadline and existing stop/recovery ru
 
 The fields of a host delivery manifest are described in
 [surface-control-delivery.md](surface-control-delivery.md).
+
+## Contract 1.4 changes
+
+1. Hardware sessions advertise `contract_version: "1.4"`, `source: "hardware"` and the `hardware`
+   capability. Simulation sessions remain 1.3, with byte-identical discovery, examples and frozen
+   fixtures. Historical simulation profiles without a source capability remain valid for compatibility;
+   hardware must never also declare `simulation`.
+2. Hardware profiles require `controls.input_declared`, all controls `accepts_input: false`, and no
+   holds or `input.hold`. These declarations reject remote input, not physical observations.
+   Input returns `permission_denied`, renew `unsupported_hold`, reset `unsupported_tool`, without
+   consuming sequence or mutating state. Identity fences are checked first.
+3. Trusted hosts construct a normal `SurfaceControlSession` with a hardware profile; its initial link
+   is disconnected. Call `transitionHardware(epoch:linkState:profile:at:)` with a fresh epoch on
+   connection, disconnection, endpoint replacement, mapping or mode change. Each transition clears
+   observations, feedback, journal and counters while retaining the monotonic write clock.
+4. Decode device input outside this package. Construct `ControlHardwareInput(expected:controlID:encoding:value:)`,
+   call `validateHardwareInput(_:at:writerID:)`, process a copied host engine, then
+   `recordHardwareInput(_:disposition:mappedValue:reason:at:writerID:)` on a copied session. Commit
+   both copies only on success. This synchronous API is never exposed in remote tool catalogs.
+   It checks identity, connected link, encoding, range, monotonic time and writer; input events use
+   hardware source and origin. Accepted observations update input values; ignored observations
+   consume sequence with a reason but do not update values. Writer identity and budgets retain 1.3 semantics.
+5. New hardware generations have unknown input values: snapshots omit all unobserved controls.
+   `seedInputs` is forbidden. Position and touch are separate host-defined controls. Snapshot and
+   event pages require `link: {"state": "connected" | "disconnected"}`; simulation pages omit it.
+6. Display feedback keeps validate/process/record atomicity. Hosts authorize it separately and
+   declare only non-moving display endpoints. No feedback declaration means `unsupported_feedback`.
+   Transmission acceptance is evidence of sending, never evidence of a physical display or position.
+7. Consumers explicitly opt into hardware in SDK 1.4.0. Older clients safely reject it. Following
+   events is read-only; there is no remote input lease. Hold-to-enable requires a press without a
+   subsequent release, an unchanged epoch and a connected link. On link disconnection, generation
+   change, event gap, stale observations or unknown outcomes, stop and explicitly prepare again.
+   Never replay historical input. Hardware provenance is a host declaration, not device qualification.
+
+`surface-control-schema --hardware` emits hardware output descriptors; add `--examples` for
+hardware discovery, unknown snapshot, event page, trusted input, accepted display and rejection
+examples. Default generation remains byte-identical to 1.3.

@@ -37,3 +37,14 @@ mapping revision. A moving branch name, a matching layout name, or an input snap
 is insufficient evidence of an accepted fresh input. Follow the existing
 [consumer guidance](surface-control.md#consumer-guidance) for cursors, clock conversion,
 unknown outcomes, and explicit recovery; version upgrades never authorize replaying a write.
+
+## Contract 1.4 / SDK 1.4.0
+
+Hardware sessions use 1.4; simulation sessions continue using 1.3. SDK 1.4.0 keeps the existing
+1.0–1.3 simulation allowlists and behavior and accepts hardware only through explicit opt-in.
+It never sends input, renew or reset methods on hardware. Prior SDKs reject hardware / 1.4.
+Profile IDs and versions remain host-owned, and hardware qualification remains per delivery.
+
+| SDK | Simulation contracts | Hardware contracts |
+| --- | --- | --- |
+| 1.4.0 | 1.0, 1.1, 1.2, 1.3 | 1.4 with explicit hardware opt-in |

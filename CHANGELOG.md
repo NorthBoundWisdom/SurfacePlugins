@@ -54,3 +54,10 @@ The current contract is 1.3 and Python SDK is 1.3.0. Runtime and consumer guidan
   [Base contract](docs/surface-control.md).
 - Initial standard-library SDK and software fixture distinguish input evidence from state
   snapshots and feedback. [Fixture definitions](docs/surface-control-scenarios.md).
+
+## Contract 1.4 / SDK 1.4.0 (local development)
+
+- Hardware source, trusted two-phase observations, unknown generations and link-state fences.
+- Hardware remote input, renew and reset rejected; display-only feedback remains host-authorized.
+- Source-specific schema generation preserves simulation 1.3 bytes and frozen fixtures.
+- SDK explicit hardware opt-in, isolated test double and read-only hardware conformance.

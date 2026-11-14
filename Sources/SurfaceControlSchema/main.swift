@@ -3,13 +3,40 @@ import SurfaceControlContracts
 import SurfacePluginContracts
 
 let arguments = Array(CommandLine.arguments.dropFirst())
-guard arguments.isEmpty || arguments == ["--examples"] else { throw ControlContractError("invalid_argument") }
+let hardware = arguments.contains("--hardware")
+let options = arguments.filter { $0 != "--hardware" }
+guard options.isEmpty || options == ["--examples"] else { throw ControlContractError("invalid_argument") }
 let schema: JSONValue
-if arguments.isEmpty {
+if hardware && options == ["--examples"] {
+    let profile = ControlProfile(id: "example.hardware", version: "1.4", controls: [
+        .init(id: "dial.1", inputKind: .absolute, encoding: .scalar, range: .init(minimum: 0, maximum: 100, step: 1), feedbackKinds: [.value], acceptsInput: false),
+        .init(id: "touch.1", inputKind: .button, encoding: .boolean, acceptsInput: false)
+    ], capabilities: ["hardware", "controls.input_declared", "input.absolute", "input.button", "feedback.value"])
+    var session = try SurfaceControlSession(instanceID: "example-instance", epoch: "initial", profile: profile)
+    try session.transitionHardware(epoch: "connected", linkState: .connected, at: 0)
+    var examples: [JSONValue] = []
+    func sample<T: Encodable>(_ tool: String, _ arguments: JSONValue, _ result: T) throws -> JSONValue {
+        .object(["tool": .string(tool), "arguments": arguments, "result": try .encoded(result)])
+    }
+    examples.append(try sample("surface_control_discover", .object([:]), session.discovery()))
+    examples.append(try sample("surface_control_snapshot", .object(["instance_id": .string("example-instance")]), session.snapshot(at: 0)))
+    let input = ControlHardwareInput(expected: session.expected, controlID: "dial.1", encoding: "scalar", value: .number(50))
+    let event = try session.recordHardwareInput(input, disposition: .accepted, at: 1)
+    examples.append(.object(["trusted_device_input": try .encoded(event)]))
+    let feedback = ControlFeedback(expected: session.expected, expectedSequence: "1", controlID: "dial.1", kind: "value", value: .number(80))
+    examples.append(try sample("surface_control_feedback", .encoded(feedback), session.recordFeedback(feedback, origin: .remote, at: 2)))
+    examples.append(try sample("surface_control_events", .object(["instance_id": .string("example-instance"), "epoch": .string("connected"), "after_sequence": .string("0"), "limit": .number(128)]), session.events(instanceID: "example-instance", epoch: "connected", afterSequence: "0", at: 2)))
+    for (tool, code, arguments) in [
+        ("surface_control_input", "permission_denied", try JSONValue.encoded(ControlInput(expected: session.expected, expectedSequence: "2", controlID: "dial.1", encoding: "scalar", value: .number(1)))),
+        ("surface_control_renew", "unsupported_hold", try JSONValue.encoded(ControlRenew(expected: session.expected, controlID: "touch.1", holdSeconds: 1))),
+        ("surface_control_reset", "unsupported_tool", JSONValue.object(["expected": try .encoded(session.expected), "expected_sequence": .string("2")]))
+    ] { examples.append(.object(["tool": .string(tool), "arguments": arguments, "result": .object(["code": .string(code)])])) }
+    schema = .array(examples)
+} else if options.isEmpty {
     schema = .object([
     "schema_version": .number(1),
-    "contract_version": .string(ControlDiscovery.contractVersion),
-    "tools": try .encoded(SurfaceControlTools.descriptors)
+    "contract_version": .string(hardware ? "1.4" : ControlDiscovery.contractVersion),
+    "tools": try .encoded(SurfaceControlTools.descriptors(source: hardware ? .hardware : .simulation))
     ])
 } else {
     let profile = ControlProfile(id: "example.scalar", version: "1.3", controls: [

@@ -1,0 +1,292 @@
+[
+  {
+    "arguments" : {
+
+    },
+    "result" : {
+      "contract_version" : "1.4",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "latest_sequence" : "0",
+      "profile" : {
+        "capabilities" : [
+          "hardware",
+          "controls.input_declared",
+          "input.absolute",
+          "input.button",
+          "feedback.value"
+        ],
+        "controls" : [
+          {
+            "accepts_input" : false,
+            "encoding" : "scalar",
+            "feedback_kinds" : [
+              "value"
+            ],
+            "id" : "dial.1",
+            "input_kind" : "absolute",
+            "range" : {
+              "maximum" : 100,
+              "minimum" : 0,
+              "step" : 1
+            }
+          },
+          {
+            "accepts_input" : false,
+            "encoding" : "boolean",
+            "feedback_kinds" : [
+
+            ],
+            "id" : "touch.1",
+            "input_kind" : "button"
+          }
+        ],
+        "id" : "example.hardware",
+        "version" : "1.4"
+      },
+      "schema_version" : 1,
+      "source" : "hardware"
+    },
+    "tool" : "surface_control_discover"
+  },
+  {
+    "arguments" : {
+      "instance_id" : "example-instance"
+    },
+    "result" : {
+      "discovery" : {
+        "contract_version" : "1.4",
+        "expected" : {
+          "epoch" : "connected",
+          "instance_id" : "example-instance",
+          "mapping_revision" : "209aa70b591e27eb",
+          "profile_id" : "example.hardware",
+          "profile_version" : "1.4"
+        },
+        "latest_sequence" : "0",
+        "profile" : {
+          "capabilities" : [
+            "hardware",
+            "controls.input_declared",
+            "input.absolute",
+            "input.button",
+            "feedback.value"
+          ],
+          "controls" : [
+            {
+              "accepts_input" : false,
+              "encoding" : "scalar",
+              "feedback_kinds" : [
+                "value"
+              ],
+              "id" : "dial.1",
+              "input_kind" : "absolute",
+              "range" : {
+                "maximum" : 100,
+                "minimum" : 0,
+                "step" : 1
+              }
+            },
+            {
+              "accepts_input" : false,
+              "encoding" : "boolean",
+              "feedback_kinds" : [
+
+              ],
+              "id" : "touch.1",
+              "input_kind" : "button"
+            }
+          ],
+          "id" : "example.hardware",
+          "version" : "1.4"
+        },
+        "schema_version" : 1,
+        "source" : "hardware"
+      },
+      "feedback" : {
+
+      },
+      "inputs" : {
+
+      },
+      "latest_sequence" : "0",
+      "link" : {
+        "state" : "connected"
+      },
+      "server_time" : 0
+    },
+    "tool" : "surface_control_snapshot"
+  },
+  {
+    "trusted_device_input" : {
+      "control_id" : "dial.1",
+      "disposition" : "accepted",
+      "encoding" : "scalar",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "kind" : "input",
+      "origin" : "hardware",
+      "sequence" : "1",
+      "source" : "hardware",
+      "time" : 1,
+      "value" : 50
+    }
+  },
+  {
+    "arguments" : {
+      "control_id" : "dial.1",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "expected_sequence" : "1",
+      "kind" : "value",
+      "value" : 80
+    },
+    "result" : {
+      "control_id" : "dial.1",
+      "disposition" : "accepted",
+      "encoding" : "value",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "kind" : "feedback",
+      "origin" : "remote",
+      "sequence" : "2",
+      "source" : "hardware",
+      "time" : 2,
+      "value" : 80
+    },
+    "tool" : "surface_control_feedback"
+  },
+  {
+    "arguments" : {
+      "after_sequence" : "0",
+      "epoch" : "connected",
+      "instance_id" : "example-instance",
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "dial.1",
+          "disposition" : "accepted",
+          "encoding" : "scalar",
+          "expected" : {
+            "epoch" : "connected",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "209aa70b591e27eb",
+            "profile_id" : "example.hardware",
+            "profile_version" : "1.4"
+          },
+          "kind" : "input",
+          "origin" : "hardware",
+          "sequence" : "1",
+          "source" : "hardware",
+          "time" : 1,
+          "value" : 50
+        },
+        {
+          "control_id" : "dial.1",
+          "disposition" : "accepted",
+          "encoding" : "value",
+          "expected" : {
+            "epoch" : "connected",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "209aa70b591e27eb",
+            "profile_id" : "example.hardware",
+            "profile_version" : "1.4"
+          },
+          "kind" : "feedback",
+          "origin" : "remote",
+          "sequence" : "2",
+          "source" : "hardware",
+          "time" : 2,
+          "value" : 80
+        }
+      ],
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "latest_sequence" : "2",
+      "link" : {
+        "state" : "connected"
+      },
+      "server_time" : 2
+    },
+    "tool" : "surface_control_events"
+  },
+  {
+    "arguments" : {
+      "control_id" : "dial.1",
+      "encoding" : "scalar",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "expected_sequence" : "2",
+      "value" : 1
+    },
+    "result" : {
+      "code" : "permission_denied"
+    },
+    "tool" : "surface_control_input"
+  },
+  {
+    "arguments" : {
+      "control_id" : "touch.1",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "hold_s" : 1
+    },
+    "result" : {
+      "code" : "unsupported_hold"
+    },
+    "tool" : "surface_control_renew"
+  },
+  {
+    "arguments" : {
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "209aa70b591e27eb",
+        "profile_id" : "example.hardware",
+        "profile_version" : "1.4"
+      },
+      "expected_sequence" : "2"
+    },
+    "result" : {
+      "code" : "unsupported_tool"
+    },
+    "tool" : "surface_control_reset"
+  }
+]
