@@ -78,7 +78,7 @@ public struct ControlDescriptor: Equatable, Codable, Sendable {
 /// Registered contract 1.1 capability vocabulary. Host-private values use `x.<host>.<name>`.
 public enum ControlCapability {
     public static let registered: Set<String> = [
-        "simulation", "controls.stable_ids", "controls.layered", "input.absolute", "input.relative",
+        "simulation", "hardware", "controls.stable_ids", "controls.layered", "input.absolute", "input.relative",
         "input.button", "input.hold", "feedback.value", "feedback.indicator",
         "feedback.unsequenced", "controls.input_declared", "input.independent_sequence",
         "events.writer_id", "writes.independent_limits"
@@ -132,6 +132,12 @@ public struct ControlProfile: Equatable, Codable, Sendable {
         }
         guard controls.allSatisfy({ ($0.accepts_input != nil) == declared.contains("controls.input_declared") }) else {
             throw ControlContractError("invalid_profile")
+        }
+        if declared.contains("hardware") {
+            guard !declared.contains("simulation"), declared.contains("controls.input_declared"),
+                  !declared.contains("input.hold"), controls.allSatisfy({ $0.accepts_input == false && $0.hold == nil }) else {
+                throw ControlContractError("invalid_profile")
+            }
         }
         var required: Set<String> = []
         for control in controls {
@@ -297,9 +303,9 @@ public struct ControlDiscovery: Equatable, Codable, Sendable {
     public let latest_sequence: String
     public let latest_input_sequence: String?
     public let write_limits: ControlWriteLimits?
-    public init(expected: ControlExpected, profile: ControlProfile, latestSequence: String, latestInputSequence: String? = nil, writeLimits: ControlWriteLimits? = nil) {
+    public init(expected: ControlExpected, profile: ControlProfile, latestSequence: String, latestInputSequence: String? = nil, writeLimits: ControlWriteLimits? = nil, source: PluginSource = .simulation) {
         latest_sequence = latestSequence; latest_input_sequence = latestInputSequence; write_limits = writeLimits
-        schema_version = 1; contract_version = Self.contractVersion; source = .simulation; self.expected = expected; self.profile = profile
+        schema_version = 1; contract_version = source == .hardware ? "1.4" : Self.contractVersion; self.source = source; self.expected = expected; self.profile = profile
     }
 }
 
@@ -323,6 +329,22 @@ public struct ControlEvent: Equatable, Codable, Sendable {
     public let hold_deadline: Double?
 }
 
+/// Trusted, decoded observation. Never parsed from a remote tool request.
+public struct ControlHardwareInput: Equatable, Sendable {
+    public let expected: ControlExpected
+    public let controlID: String
+    public let encoding: String
+    public let value: JSONValue
+    public init(expected: ControlExpected, controlID: String, encoding: String, value: JSONValue) {
+        self.expected = expected; self.controlID = controlID; self.encoding = encoding; self.value = value
+    }
+}
+public struct ControlLink: Equatable, Codable, Sendable {
+    public enum State: String, Codable, Sendable { case connected, disconnected }
+    public let state: State
+    public init(state: State) { self.state = state }
+}
+
 public struct ControlSnapshot: Equatable, Codable, Sendable {
     public let discovery: ControlDiscovery
     public let server_time: Double
@@ -332,6 +354,7 @@ public struct ControlSnapshot: Equatable, Codable, Sendable {
     public let feedback: [String: [String: JSONValue]]
     /// Contract 1.1: active lease deadlines by control ID. Omitted when no lease is held.
     public let holds: [String: Double]?
+    public let link: ControlLink?
 }
 public struct ControlEventPage: Equatable, Codable, Sendable {
     public let server_time: Double
@@ -341,6 +364,7 @@ public struct ControlEventPage: Equatable, Codable, Sendable {
     public let events: [ControlEvent]
     /// Contract 1.2: current leases at page read time, omitted when empty.
     public let holds: [String: Double]?
+    public let link: ControlLink?
 }
 
 /// Host-owned fixed-window write policy; no clock, counters, credentials, or I/O in the contract.
