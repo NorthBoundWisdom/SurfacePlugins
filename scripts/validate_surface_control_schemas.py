@@ -55,6 +55,22 @@ def main():
                         "scenario_steps": sum(len(s["steps"]) for s in fixture["scenarios"])}
     operations = {step["operation"] for scenario in fixture["scenarios"] for step in scenario["steps"]}
     assert {"advance", "renew"} <= operations, "1.1 fixture lacks hold operations"
+    hardware_tools = {tool["name"]: tool for tool in json.loads((root / "docs/surface-control-hardware-tools.json").read_text())["tools"]}
+    hardware_examples = json.loads((root / "docs/surface-control-hardware-examples.json").read_text())
+    for tool in hardware_tools.values():
+        Draft202012Validator.check_schema(tool["inputSchema"])
+        Draft202012Validator.check_schema(tool["outputSchema"])
+    for sample in hardware_examples:
+        if "trusted_device_input" in sample:
+            event = sample["trusted_device_input"]
+            assert event["source"] == event["origin"] == "hardware"
+            continue
+        tool = hardware_tools[sample["tool"]]
+        Draft202012Validator(tool["inputSchema"]).validate(sample["arguments"])
+        Draft202012Validator(tool["outputSchema"]).validate(sample["result"])
+    hardware = json.loads((root / "fixtures/surface-control-hardware-v1.4.json").read_text())
+    Draft202012Validator(scenario_schema).validate(hardware)
+    counts["surface-control-hardware-v1.4.json"] = {"scenario_count": len(hardware["scenarios"]), "scenario_steps": sum(len(scene["steps"]) for scene in hardware["scenarios"])}
     print(json.dumps({"status": "pass", "schema_definitions": 2 * len(tools) + 1,
                       "typed_request_result_examples": len(examples), "fixtures": counts}))
 

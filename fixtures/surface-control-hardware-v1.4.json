@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "scenario_id": "surface-control-hardware-v1.4",
+  "contract_version": "1.4",
+  "source": "hardware",
+  "clock": "injected_monotonic",
+  "initial_time_s": 0,
+  "required_capabilities": [
+    "hardware",
+    "controls.input_declared"
+  ],
+  "roles": {
+    "input_a": {
+      "input_kind": "absolute",
+      "encoding": "scalar"
+    },
+    "relative_input": {
+      "input_kind": "relative",
+      "encoding": "signedDelta"
+    },
+    "button_input": {
+      "input_kind": "button",
+      "encoding": "boolean"
+    },
+    "touch_input": {
+      "input_kind": "button",
+      "encoding": "boolean"
+    },
+    "feedback_state": {
+      "feedback_kind": "indicator"
+    },
+    "feedback_progress": {
+      "feedback_kind": "value"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "unknown_and_observations",
+      "scope": "inprocess",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "unknown_inputs": [
+              "input_a",
+              "relative_input",
+              "button_input",
+              "touch_input"
+            ],
+            "sequence": "0",
+            "link_state": "connected"
+          }
+        },
+        {
+          "at_s": 1,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "1",
+            "source": "hardware",
+            "origin": "hardware"
+          }
+        },
+        {
+          "at_s": 2,
+          "operation": "hardware_input",
+          "role": "relative_input",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "2"
+          }
+        },
+        {
+          "at_s": 3,
+          "operation": "hardware_input",
+          "role": "button_input",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "3"
+          }
+        },
+        {
+          "at_s": 4,
+          "operation": "hardware_input",
+          "role": "button_input",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "4"
+          }
+        },
+        {
+          "at_s": 5,
+          "operation": "hardware_input",
+          "role": "touch_input",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "5"
+          }
+        },
+        {
+          "at_s": 6,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "minimum",
+          "disposition": "ignored",
+          "reason": "no_binding",
+          "expect": {
+            "disposition": "ignored",
+            "sequence": "6",
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 7,
+          "operation": "feedback",
+          "role": "feedback_state",
+          "value": "on",
+          "expect": {
+            "disposition": "accepted",
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 8,
+          "operation": "feedback",
+          "role": "feedback_progress",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 9,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "error": "permission_denied",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 10,
+          "operation": "renew",
+          "role": "button_input",
+          "hold_s": 1,
+          "expect": {
+            "error": "unsupported_hold",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 11,
+          "operation": "reset",
+          "expect": {
+            "error": "unsupported_tool",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 12,
+          "operation": "events",
+          "expect": {
+            "event_count": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "link_generations",
+      "scope": "inprocess",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "hardware_link",
+          "link_state": "disconnected",
+          "expect": {
+            "epoch_changed": true,
+            "link_state": "disconnected",
+            "unknown_inputs": [
+              "input_a",
+              "relative_input",
+              "button_input",
+              "touch_input"
+            ]
+          }
+        },
+        {
+          "at_s": 1,
+          "operation": "events",
+          "expected_scope": "initial",
+          "expect": {
+            "error": "stale_epoch"
+          }
+        },
+        {
+          "at_s": 2,
+          "operation": "hardware_link",
+          "link_state": "connected",
+          "expect": {
+            "epoch_changed": true,
+            "link_state": "connected",
+            "sequence": "0",
+            "unknown_inputs": [
+              "input_a",
+              "relative_input",
+              "button_input",
+              "touch_input"
+            ]
+          }
+        },
+        {
+          "at_s": 3,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bounded_gap",
+      "scope": "inprocess",
+      "event_capacity": 2,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted"
+          }
+        },
+        {
+          "at_s": 1,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted"
+          }
+        },
+        {
+          "at_s": 2,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "minimum",
+          "expect": {
+            "disposition": "accepted"
+          }
+        },
+        {
+          "at_s": 3,
+          "operation": "events",
+          "after_sequence": "0",
+          "expect": {
+            "error": "event_gap"
+          }
+        }
+      ]
+    }
+  ]
+}

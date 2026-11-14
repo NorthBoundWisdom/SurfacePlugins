@@ -369,6 +369,8 @@ class Client:
         versions = tuple(versions)
         require(versions and set(versions) <= set(CONTRACT_VERSIONS), "unsupported_contract")
         value = self.call("surface_control_discover")
+        if value.get("source") == "hardware" and "hardware" not in getattr(self, "accepted_sources", ("simulation",)):
+            raise SurfaceError("unsupported_contract", "Hardware source requires explicit accepted_sources=(\"hardware\",) in Client")
         require(
             value.get("schema_version") == 1
             and value.get("contract_version") in versions
@@ -471,6 +473,10 @@ class Client:
         require(self.latest_sequence is None or latest >= cursor(self.latest_sequence), "sequence_rollback")
         self._observe_time(value["server_time"])
         require(isinstance(value.get("inputs"), dict) and isinstance(value.get("feedback"), dict), "invalid_snapshot")
+        if getattr(self, "source", "simulation") == "hardware":
+            require(value["discovery"].get("contract_version") == "1.4" and value["discovery"].get("profile") == self.profile, "invalid_snapshot")
+            for ident, item in value["inputs"].items():
+                require(admits(self.control(ident), item), "invalid_snapshot")
         holds = value.get("holds", {})
         require(isinstance(holds, dict) and all(finite(item) for item in holds.values()), "invalid_snapshot")
         latest_input = self._read_input_sequence(value)
@@ -715,6 +721,17 @@ class EventCursor:
                 and (event.get("reason") is None or (isinstance(event["reason"], str) and 0 < len(event["reason"]) <= 128)),
                 "invalid_event",
             )
+            if getattr(self.client, "source", "simulation") == "hardware":
+                row = self.client.control(event["control_id"])
+                if event["kind"] == "input":
+                    require(event.get("encoding") == row["encoding"] and admits(row, event.get("value"))
+                            and event.get("hold_deadline") is None, "invalid_event")
+                else:
+                    require(event.get("encoding") in row.get("feedback_kinds", []), "invalid_event")
+                    if event["encoding"] == "indicator":
+                        require(event.get("value") in ("off", "on", "blink"), "invalid_event")
+                    else:
+                        require(admits({**row, "range": row.get("feedback_range", row.get("range"))}, event.get("value")), "invalid_event")
             if event["disposition"] == "ignored":
                 require(event.get("reason") is not None, "invalid_event")
             event_input = self.client._read_input_sequence(event, key="input_sequence", global_key="sequence")

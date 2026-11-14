@@ -94,3 +94,28 @@ event, and advance the appropriate highwater. Explicit event reads must match th
 journal slice. Reset uses the SDK's validated reset path. These checks apply even when a
 fixture step has no expectation for that field. Reflected credentials and malformed error
 codes become fixed diagnostic codes rather than appearing in reports or CLI output.
+
+## Hardware read-only checks (1.4)
+
+Use the hardware fixture and `--accept-hardware` to explicitly accept hardware provenance.
+The default invocation remains simulation-only. Hardware checks validate discovery/profile,
+unknown-capable snapshot and link, and read events from the current highwater. They never reset
+or inject input. The three SDK mutation methods are exercised as **local refusal probes**, with
+`executed: false` and actual scope `SDK local refusal; zero transport requests`. These passing
+probes establish the SDK fence, not the host's remote rejection; host process-local and transport
+tests establish remote rejection separately. This distinction is intentional: a conformance
+checker must never send `surface_control_input` to a real endpoint.
+
+The report records `source: hardware`. Timed observations, link transitions and bounded-gap
+scenarios remain explicit skips, requiring the trusted in-process host runner. Display feedback
+is also skipped unless `--allow-hardware-feedback` is explicitly supplied alongside hardware
+opt-in. That option writes one declared display only; it never targets a control without feedback
+or sends input, renewal or reset. A passive check can run while disconnected; this grants no
+continuity or device qualification. A read-only pass with skips is not complete fixture evidence.
+
+```sh
+python3 -B -m surface_conformance --accept-hardware \
+  --url http://127.0.0.1:8787/mcp --token-file /private/token --instance-id instance \
+  --fixture surface-control-hardware-v1.4.json --roles conformance-roles.json \
+  --report /tmp/hardware-read-only.json
+```

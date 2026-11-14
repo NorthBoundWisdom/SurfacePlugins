@@ -64,10 +64,11 @@ def validate_roles(document, fixture, profile):
 
 
 class Runner:
-    def __init__(self, client, fixture, roles, fixture_sha256):
+    def __init__(self, client, fixture, roles, fixture_sha256, *, allow_hardware_feedback=False):
         self.client, self.fixture = client, fixture
         self.roles = select_roles(roles, fixture)
         self.digest = fixture_sha256
+        self.allow_hardware_feedback = allow_hardware_feedback
         self.last_write = None
 
     def value(self, role, symbolic, *, feedback=False):
@@ -296,6 +297,81 @@ class Runner:
                 check(observed == expect[key], "operation result highwater differs")
         return actual
 
+    def run_hardware(self, discovery, report):
+        """Passive public checks plus SDK-local refusal probes. Never send a device input."""
+        check(self.fixture.get("source") == "hardware" and self.fixture.get("contract_version") == "1.4", "hardware requires a hardware fixture")
+        report["source"] = "hardware"
+        def probe(operation, action, *, network=True):
+            entry = {"scenario": "hardware_read_only", "step": len(report["steps"]), "operation": operation, "executed": network}
+            try:
+                actual = action()
+                entry.update(status="pass", actual=actual or {})
+            except (SurfaceError, CheckFailure) as error:
+                entry.update(status="fail", reason=safe_error(error, self.client.token) if isinstance(error, SurfaceError) else str(error))
+            report["steps"].append(entry)
+        probe("discover", lambda: {"source": discovery["source"], "contract_version": discovery["contract_version"]})
+        def snapshot():
+            value = self.client.snapshot()
+            self.validate_snapshot(value)
+            return {"link": value["link"], "known_inputs": sorted(value["inputs"])}
+        probe("snapshot", snapshot)
+        def events():
+            current = self.client.snapshot()
+            # Begin at highwater; retained history and real device actions are not prerequisites.
+            page = self.client.call("surface_control_events", {"instance_id": self.client.instance_id, "epoch": self.client.expected["epoch"], "after_sequence": current["latest_sequence"], "limit": 1024})
+            check(page.get("expected") == self.client.expected, "event identity differs")
+            self.client._validate_link(page)
+            check(cursor(page.get("latest_sequence")) >= cursor(current["latest_sequence"]), "event highwater regressed")
+            check(isinstance(page.get("events"), list), "invalid event page")
+            previous = cursor(current["latest_sequence"])
+            for event in page["events"]:
+                check(event.get("source") == "hardware" and event.get("expected") == self.client.expected
+                      and cursor(event.get("sequence")) == previous + 1, "invalid hardware event")
+                row = self.controls.get(event.get("control_id"))
+                check(row is not None, "unknown event control")
+                if event.get("kind") == "input":
+                    check(event.get("origin") == "hardware" and event.get("encoding") == row["encoding"] and admits(row, event.get("value")), "invalid hardware input")
+                elif event.get("kind") == "feedback":
+                    check(event.get("origin") in ("interface", "remote"), "invalid feedback origin")
+                    self.validate_feedback(row, event.get("encoding"), event.get("value"))
+                else:
+                    raise CheckFailure("invalid event kind")
+                previous += 1
+            return {"source": "hardware", "link": page["link"], "events": len(page["events"])}
+        probe("events", events)
+        first = self.client.profile["controls"][0]
+        def rejected(action, code):
+            before = (self.client.latest_sequence, self.client.latest_input_sequence)
+            try:
+                action()
+            except SurfaceError as error:
+                check(error.code == code, "local refusal code differs")
+                check(before == (self.client.latest_sequence, self.client.latest_input_sequence), "local refusal mutated cursor")
+                return {"error": code, "scope": "SDK local refusal; zero transport requests"}
+            raise CheckFailure("hardware SDK did not reject")
+        probe("input_local_refusal", lambda: rejected(lambda: self.client.input(first["id"], first["encoding"], False if first["encoding"] == "boolean" else first["range"]["minimum"]), "permission_denied"), network=False)
+        probe("renew_local_refusal", lambda: rejected(lambda: self.client.renew(first["id"], 1), "unsupported_hold"), network=False)
+        probe("reset_local_refusal", lambda: rejected(self.client.reset, "unsupported_tool"), network=False)
+        for scenario in self.fixture["scenarios"]:
+            for index, step in enumerate(scenario["steps"]):
+                reason = "trusted device/lifecycle or injected-clock fixture requires in-process host runner"
+                entry = {"scenario": scenario["id"], "step": index, "operation": step["operation"], "status": "skip", "executed": False, "reason": reason}
+                report["steps"].append(entry)
+        feedback = next((row for row in self.client.profile["controls"] if row.get("feedback_kinds")), None)
+        if self.allow_hardware_feedback and feedback:
+            def display():
+                kind = feedback["feedback_kinds"][0]
+                span = feedback.get("feedback_range", feedback.get("range"))
+                value = "off" if kind == "indicator" else (span["minimum"] if span else False)
+                event = self.client.feedback(feedback["id"], kind, value)
+                check(event.get("source") == "hardware", "feedback source differs")
+                return {"source": "hardware", "control_id": feedback["id"], "disposition": event["disposition"]}
+            probe("authorized_display_feedback", display)
+        else:
+            report["steps"].append({"scenario": "hardware_read_only", "step": 6, "operation": "display_feedback", "status": "skip", "executed": False, "reason": "display feedback requires explicit --allow-hardware-feedback and a display descriptor"})
+        report["counts"] = {status: sum(row["status"] == status for row in report["steps"]) for status in ("pass", "fail", "skip")}
+        return report
+
     def run(self):
         discovery = self.client.discover()
         fixture_version = self.fixture.get("contract_version", "1.0")
@@ -306,6 +382,9 @@ class Runner:
                   "fixture_contract_version": fixture_version, "contract_version": discovery["contract_version"], "profile_id": self.client.profile["id"],
                   "profile_version": self.client.profile["version"], "mapping_revision": self.client.expected["mapping_revision"],
                   "roles": self.roles["roles"], "steps": []}
+        if discovery["source"] == "hardware":
+            return self.run_hardware(discovery, report)
+        check(self.fixture.get("source", "simulation") == "simulation", "hardware fixture cannot run on simulation")
         for scenario in self.fixture["scenarios"]:
             dependency = None
             failed = False
@@ -368,6 +447,6 @@ class Runner:
         return report
 
 
-def run_fixture(client, fixture_bytes, roles):
+def run_fixture(client, fixture_bytes, roles, *, allow_hardware_feedback=False):
     fixture = json.loads(fixture_bytes)
-    return Runner(client, fixture, roles, hashlib.sha256(fixture_bytes).hexdigest()).run()
+    return Runner(client, fixture, roles, hashlib.sha256(fixture_bytes).hexdigest(), allow_hardware_feedback=allow_hardware_feedback).run()

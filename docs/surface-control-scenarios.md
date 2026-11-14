@@ -142,3 +142,25 @@ writer IDs. Legacy fixture steps always use global CAS, even when the host suppo
 Reports normalize principals to their trusted `writer_kind` for cross-host comparison; public
 opaque ID entropy may differ. Independent-limit admission and credential/principal file security
 need separate real-process tests, alongside the fixture's deterministic adapter evidence.
+
+## Hardware fixture 1.4
+
+`fixtures/surface-control-hardware-v1.4.json` is a separate deterministic trusted-host scenario;
+the four software fixtures remain frozen. Roles use the existing role-map form with fixture key
+`surface-control-hardware-v1.4`: `input_a` (absolute), `relative_input`, `button_input`,
+`touch_input`, `feedback_state` (indicator), `feedback_progress` (value). Map distinct available
+controls; omit an unavailable role or set it to null, and explicitly skip dependent steps.
+No device ID, address or business action is implied. Source is hardware as a test declaration.
+
+The process-local host runner creates a fresh connected generation for each scenario, with the
+declared journal capacity and injected time. `hardware_input` is trusted decoded input: choose the
+role descriptor's minimum/maximum, call validate, run a copied host engine, then record accepted
+or ignored (step `disposition` / `reason`) and atomically commit. Boolean minimum/maximum mean
+false/true. `hardware_link` invokes the trusted transition API with a fresh epoch and the given
+`link_state`. `expected_scope: initial` on events uses the scenario's original epoch to test
+`stale_epoch`. `snapshot`, `feedback`, `input`, `renew`, `reset` and `events` have the usual meanings;
+input/renew/reset must be refused without state changes. `unknown_inputs` asserts absent input
+values by role. `source`, `origin`, `link_state` are exact expectations. `inputs_unchanged` compares
+the complete accepted input dictionary; it does not mean input sequence was unchanged. The
+capacity-two scenario injects three observations then reads from zero to demand `event_gap`.
+These steps cannot be driven by remote requests and do not constitute physical-device evidence.
