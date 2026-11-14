@@ -37,3 +37,9 @@ its `.url`, `.instance_id` and trusted `.apply_step(step)` support deterministic
 `profile`, `capacity` and `allow_feedback` are constructor-only test configuration. This test
 double advertises standard budgets but does not model concurrent rate-limit enforcement or
 production parser hardening; it cannot qualify a host transport implementation.
+
+For trusted failure-atomicity tests, call `host.reject_next_feedback()` in the test process.
+The next authorized, valid display request raises the test-only `test_transport_rejected`
+before a feedback event or value commits. No HTTP tool can enable this hook. Compare complete
+snapshots and journals before/after; it does not model a real device's transport or prove
+physical delivery. Runtime SDK version and interfaces remain unchanged.

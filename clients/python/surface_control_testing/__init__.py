@@ -44,6 +44,12 @@ class TestOnlyHardwareHost:
         self.sequence = self.input_sequence = 0
         self.requests = []
         self.server = None
+        self._reject_feedback = False
+
+    def reject_next_feedback(self):
+        """Trusted test-only transport rejection; no HTTP method can arm this failure."""
+        with self.lock:
+            self._reject_feedback = True
 
     @property
     def expected(self):
@@ -173,6 +179,9 @@ class TestOnlyHardwareHost:
                 valid = admits(descriptor, value)
             if not valid:
                 raise SurfaceError("invalid_value")
+            if self._reject_feedback:
+                self._reject_feedback = False
+                raise SurfaceError("test_transport_rejected")
             event = self._append("feedback", row, kind, value)
             self.feedback_values.setdefault(row["id"], {})[kind] = value
             return event

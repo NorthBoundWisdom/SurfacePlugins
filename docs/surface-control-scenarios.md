@@ -170,3 +170,61 @@ The independent `common_absolute_lifecycle` scenario requires only `input_a` and
 round trip and link lifecycle. The three richer scenarios retain their exact sequence/count
 assertions: if a required role is unavailable, explicitly skip its dependent state expectations
 rather than inventing a control or changing expected numbers. Report coverage per scenario.
+
+## Independent hardware coverage (1.4, follow-up)
+
+`fixtures/surface-control-hardware-independent-v1.4.json` is an additional fixture with its own
+scenario ID `surface-control-hardware-independent-v1.4`. The previous hardware fixture and its
+32 steps remain unchanged, alongside all four frozen software fixtures. This file isolates
+supported operations from an absent relative-input role; it adds no runtime contract behavior.
+
+| Scenario | Required roles | Steps | Additional evidence |
+| --- | --- | --- | --- |
+| `accepted_button_edges_and_recovery` | `button_accepted` | 12 | Press/release are separately known; reconnect clears the button; disconnected observation is rejected atomically; remote writes cannot release/rearm it. |
+| `ignored_button_edges_remain_unknown` | `button_ignored` | 4 | Both observed edges consume sequence as ignored and never turn an unbound button into known accepted input. |
+| `position_touch_independent_edges` | `input_a`, `touch_input` | 8 | Position does not invent touch; moving position preserves touch, release preserves position; endpoint replacement clears both. |
+| `value_feedback_failures_are_atomic` | `input_a`, `feedback_progress`, `input_only` | 8 | Value display retains input; failed transmission, invalid numeric value and unsupported button display preserve the complete snapshot and journal. |
+
+Select roles in a separate entry under the new fixture ID, with the existing version-1 role map
+format. Each scenario's `required_roles` is its complete prerequisite set; a missing role skips
+that scenario only. Do not require every top-level role for every scenario. Keep all exact
+sequence, value and count assertions for executed scenarios. A skipped scenario must record its
+missing role/policy. `button_accepted` and `button_ignored` must reflect the host's actual accepted
+or ignored route; do not relabel an ignored physical button as accepted. A host with only
+ignored buttons can run the ignored scenario and skip accepted edges. Hosts without touch skip
+only the position/touch scenario. No new scenario requires relative input or indicator feedback.
+`input_only` is a separate existing boolean control with no feedback (for example a real
+encoder press or an unbound button), never a fabricated hardware control.
+
+The new file uses existing `known_inputs` expectations: resolve minimum/maximum through the
+input descriptor (boolean false/true), then compare the accepted snapshot value for each role.
+Feedback values instead resolve through `feedback_range` when present. For `atomic: true`,
+compare the entire snapshot and the full current-generation journal before and after the
+rejected operation at the same injected time, including values, feedback, counters and identity.
+Never treat a known input value as a device display observation.
+
+Two test-only runner additions are explicit:
+
+- `feedback_kind` selects `value` or `indicator` independently of the control's declarations.
+  This lets an input-only control prove `unsupported_feedback` without inventing a display.
+  Existing `invalid_value: "nan"` creates a nonfinite test value only in the trusted runner;
+  it must fail preflight with `invalid_value` and must not reach a transport.
+- `feedback_failure` uses the same fields as feedback. First run normal permission/preflight,
+  then force the host's **fake display transport** to reject before recording an accepted
+  event. Normalize that injected test outcome to `test_transport_rejected` inside the runner.
+  This is not a production error code, remote tool, transport option or real-device operation.
+  Do not change the public HTTP error semantics. Real host runners should assert that their
+  accepted-send record was not updated; the shared reference harness checks snapshot/journal
+  rollback between validation and commit.
+
+The separate test-only Python host offers trusted `reject_next_feedback()` for the same
+pre-commit failure. It cannot be armed over HTTP; it affects the next valid authorized display
+request and preserves snapshot/journal on rejection. It is test evidence only, not a physical
+transport or hardware qualification. The normal SDK and all production sources are unchanged.
+The public read-only checker still skips trusted steps; it must never invoke the failure hook.
+
+Reference runner: `Tests/SurfaceControlContractsTests/IndependentHardwareFixtureTests.swift`.
+The independent file adds 4 scenarios / 32 steps; it does not replace or reduce the old
+hardware file's 4 scenarios / 32 steps or the software files' 4/40, 6/65, 9/83 and 10/97.
+Unknown/link/gap behavior already covered by usable old scenes is retained rather than copied;
+new lifecycle checks specifically cover accepted button edges and position/touch independence.

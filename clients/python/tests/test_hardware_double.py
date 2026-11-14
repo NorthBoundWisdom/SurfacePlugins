@@ -68,6 +68,21 @@ class TestDoubleE2ETests(unittest.TestCase):
             self.assertEqual(error.exception.code, "permission_denied")
             self.assertEqual(host.sequence, 0)
 
+    def test_transport_rejection_keeps_snapshot_and_journal_atomic(self):
+        with TestOnlyHardwareHost("test-only-token") as host:
+            client = self.client(host, accepted_sources=("hardware",))
+            client.feedback("axis", "value", 127)
+            before = client.snapshot()
+            args = {"instance_id": host.instance_id, "epoch": client.expected["epoch"], "after_sequence": "0", "limit": 128}
+            before_events = client.call("surface_control_events", args)
+            host.reject_next_feedback()
+            with self.assertRaises(SurfaceError) as error:
+                client.feedback("axis", "value", 0)
+            self.assertEqual(error.exception.code, "test_transport_rejected")
+            self.assertEqual(client.snapshot(), before)
+            self.assertEqual(client.call("surface_control_events", args), before_events)
+            self.assertEqual(client.feedback("axis", "value", 0)["sequence"], "2")
+
 
 if __name__ == "__main__":
     unittest.main()

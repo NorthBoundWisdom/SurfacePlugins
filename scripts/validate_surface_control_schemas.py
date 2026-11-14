@@ -71,6 +71,17 @@ def main():
     hardware = json.loads((root / "fixtures/surface-control-hardware-v1.4.json").read_text())
     Draft202012Validator(scenario_schema).validate(hardware)
     counts["surface-control-hardware-v1.4.json"] = {"scenario_count": len(hardware["scenarios"]), "scenario_steps": sum(len(scene["steps"]) for scene in hardware["scenarios"])}
+    independent = json.loads((root / "fixtures/surface-control-hardware-independent-v1.4.json").read_text())
+    Draft202012Validator(scenario_schema).validate(independent)
+    for scene in independent["scenarios"]:
+        used = {step["role"] for step in scene["steps"] if "role" in step}
+        for step in scene["steps"]:
+            used.update(step["expect"].get("known_inputs", {}))
+            used.update(step["expect"].get("unknown_inputs", []))
+        assert used == set(scene["required_roles"]), "Independent scene must declare exactly its role prerequisites"
+        assert used <= set(independent["roles"])
+        assert [step["at_s"] for step in scene["steps"]] == sorted(step["at_s"] for step in scene["steps"])
+    counts["surface-control-hardware-independent-v1.4.json"] = {"scenario_count": len(independent["scenarios"]), "scenario_steps": sum(len(scene["steps"]) for scene in independent["scenarios"])}
     print(json.dumps({"status": "pass", "schema_definitions": 2 * len(tools) + 1,
                       "typed_request_result_examples": len(examples), "fixtures": counts}))
 

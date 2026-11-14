@@ -103,7 +103,8 @@
                     "renew",
                     "refresh_sequence",
                     "hardware_input",
-                    "hardware_link"
+                    "hardware_link",
+                    "feedback_failure"
                   ]
                 },
                 "instance": {
@@ -322,6 +323,12 @@
                 "reason": {
                   "type": "string",
                   "minLength": 1
+                },
+                "feedback_kind": {
+                  "enum": [
+                    "value",
+                    "indicator"
+                  ]
                 }
               },
               "required": [
@@ -332,6 +339,15 @@
               "additionalProperties": false
             },
             "minItems": 1
+          },
+          "required_roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
           }
         },
         "required": [
