@@ -113,3 +113,22 @@ In addition to the existing SDK, schema and fixtures, include:
 Hash these copies through the same `files_sha256` and `surface_plugins_files_sha256` rules.
 Role mappings are host-owned; their bytes belong in `files_sha256` only. Live checker reports
 are verification evidence generated after packaging, kept outside the immutable delivery.
+
+## Hardware contract 1.4 deliveries
+
+The common fields also describe hardware deliveries: `artifact: surface-control-hardware`,
+`surface_control_contract: "1.4"`, `surface_control_sdk: "1.4.0"`, `source: "hardware"`.
+A combined host delivery retains the primary/default profile in common fields and may include
+`surface_control_profiles`, an array of objects with `contract_version`, `source`, `profile_id`,
+`profile_version`, `mapping_revision`. A combined BCR delivery can list 1.3 simulation and 1.4
+hardware there; this does not alter the simulator's contract or make hardware the default.
+Include `surface-control-hardware-tools.json`, `surface-control-hardware-examples.json`, the
+hardware fixture and host-owned role mapping as additional hashed files.
+
+SDK 1.4.0 zips contain `surface_control/`, `surface_conformance/` and the **separate**
+`surface_control_testing/` directory (including its warning and usage document). The test double
+must not be nested inside the runtime `surface_control/` package. List its own identity in
+`test_artifacts: [{"artifact": "surface-control-test-only-hardware-double", "qualification": "test-only"}]`.
+Hash the test package files exactly like other shared sources. This identity is never a host
+product, real hardware, or acceptance evidence. Consumers must use it only in tests. Real
+hardware qualification always requires attended per-device and per-delivery validation.
