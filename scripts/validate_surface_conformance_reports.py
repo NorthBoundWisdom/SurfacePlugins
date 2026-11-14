@@ -40,3 +40,17 @@ with TestOnlyHardwareHost("schema-test-only-token") as host:
     validator.validate(report)
     assert report["counts"] == {"pass": 6, "fail": 0, "skip": 33}
 print(json.dumps({"status": "pass", "hardware_read_only_reports": 1}))
+
+from surface_control_diagnostics import ReadOnlyClient, capture, verify
+capture_schema = json.loads((ROOT / "docs/surface-control-diagnostic-capture.schema.json").read_bytes())
+Draft202012Validator.check_schema(capture_schema)
+with TestOnlyHardwareHost("diagnostic-schema-test-only") as host:
+    host.connected = False
+    client = ReadOnlyClient(host.url, "diagnostic-schema-test-only", host.instance_id, accepted_sources=("hardware",))
+    captured = capture(client, host.profile["id"], host.profile["version"], limits={"max_polls": 1})
+    Draft202012Validator(capture_schema).validate(captured)
+    diagnostic = verify(captured)
+    assert diagnostic["capture_integrity"] == "verified_recorded_invariants"
+    assert diagnostic["diagnostic_status"] == "incomplete_or_failed" and diagnostic["exit_code"] == 1
+    assert diagnostic["validated_page_count"] == 0 and diagnostic["physical_qualification"] is False
+print(json.dumps({"status": "pass", "diagnostic_capture_schema": 1, "disconnected_capture_keeps_nonzero": True}))

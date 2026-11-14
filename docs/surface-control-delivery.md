@@ -132,3 +132,20 @@ must not be nested inside the runtime `surface_control/` package. List its own i
 Hash the test package files exactly like other shared sources. This identity is never a host
 product, real hardware, or acceptance evidence. Consumers must use it only in tests. Real
 hardware qualification always requires attended per-device and per-delivery validation.
+
+## Read-only diagnostic companion
+
+SDK zips may additionally include the independent `surface_control_diagnostics/` directory,
+containing byte-identical `__init__.py`, `__main__.py` and `README.md` from the pinned shared
+revision. It sits beside, never inside, the runtime `surface_control/` package. The diagnostic
+companion uses the existing runtime SDK and checker error sanitization; it does not change SDK
+1.4.0 or any served contract version. Include `docs/surface-control-diagnostics.md` and
+`docs/surface-control-diagnostic-capture.schema.json` as hashed usage/format documents when
+shipping the companion. List every copied file using the existing shared-source and delivery
+hash rules. Never package tokens, HTTP headers, ready credentials or live capture files.
+
+Captures and verify reports are generated outside the immutable delivery. Both use
+`qualification: software-diagnostic-only`; a structurally valid disconnected capture is
+incomplete and returns 1, never a successful hardware qualification. A source field of hardware
+is a host protocol declaration, not evidence that a physical device was connected. Details,
+bounds, CLI and status separation are in the standalone diagnostics README.
