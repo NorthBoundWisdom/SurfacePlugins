@@ -38,5 +38,5 @@ with TestOnlyHardwareHost("schema-test-only-token") as host:
     client = Client(host.url, "schema-test-only-token", host.instance_id, accepted_sources=("hardware",))
     report = run_fixture(client, (ROOT / "fixtures/surface-control-hardware-v1.4.json").read_bytes(), {"schema_version": 1, "roles": {"input_a": "axis"}})
     validator.validate(report)
-    assert report["counts"] == {"pass": 6, "fail": 0, "skip": 22}
+    assert report["counts"] == {"pass": 6, "fail": 0, "skip": 33}
 print(json.dumps({"status": "pass", "hardware_read_only_reports": 1}))

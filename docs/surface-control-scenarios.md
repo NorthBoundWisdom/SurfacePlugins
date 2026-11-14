@@ -164,3 +164,9 @@ values by role. `source`, `origin`, `link_state` are exact expectations. `inputs
 the complete accepted input dictionary; it does not mean input sequence was unchanged. The
 capacity-two scenario injects three observations then reads from zero to demand `event_gap`.
 These steps cannot be driven by remote requests and do not constitute physical-device evidence.
+
+The independent `common_absolute_lifecycle` scenario requires only `input_a` and
+`feedback_state`, so hosts without relative input or touch can still run a complete common
+round trip and link lifecycle. The three richer scenarios retain their exact sequence/count
+assertions: if a required role is unavailable, explicitly skip its dependent state expectations
+rather than inventing a control or changing expected numbers. Report coverage per scenario.

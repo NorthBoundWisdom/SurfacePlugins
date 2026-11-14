@@ -272,6 +272,128 @@
           }
         }
       ]
+    },
+    {
+      "id": "common_absolute_lifecycle",
+      "scope": "inprocess",
+      "event_capacity": 1024,
+      "steps": [
+        {
+          "at_s": 0,
+          "operation": "snapshot",
+          "expect": {
+            "unknown_inputs": [
+              "input_a"
+            ],
+            "sequence": "0",
+            "link_state": "connected"
+          }
+        },
+        {
+          "at_s": 1,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "1",
+            "source": "hardware",
+            "origin": "hardware"
+          }
+        },
+        {
+          "at_s": 2,
+          "operation": "hardware_input",
+          "role": "input_a",
+          "value": "minimum",
+          "disposition": "ignored",
+          "reason": "no_binding",
+          "expect": {
+            "disposition": "ignored",
+            "sequence": "2",
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 3,
+          "operation": "input",
+          "role": "input_a",
+          "value": "maximum",
+          "expect": {
+            "error": "permission_denied",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 4,
+          "operation": "renew",
+          "role": "input_a",
+          "hold_s": 1,
+          "expect": {
+            "error": "unsupported_hold",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 5,
+          "operation": "reset",
+          "expect": {
+            "error": "unsupported_tool",
+            "atomic": true
+          }
+        },
+        {
+          "at_s": 6,
+          "operation": "feedback",
+          "role": "feedback_state",
+          "value": "on",
+          "expect": {
+            "disposition": "accepted",
+            "sequence": "3",
+            "inputs_unchanged": true
+          }
+        },
+        {
+          "at_s": 7,
+          "operation": "events",
+          "expect": {
+            "event_count": 3
+          }
+        },
+        {
+          "at_s": 8,
+          "operation": "hardware_link",
+          "link_state": "disconnected",
+          "expect": {
+            "epoch_changed": true,
+            "unknown_inputs": [
+              "input_a"
+            ],
+            "link_state": "disconnected"
+          }
+        },
+        {
+          "at_s": 9,
+          "operation": "events",
+          "expected_scope": "initial",
+          "expect": {
+            "error": "stale_epoch"
+          }
+        },
+        {
+          "at_s": 10,
+          "operation": "hardware_link",
+          "link_state": "connected",
+          "expect": {
+            "epoch_changed": true,
+            "unknown_inputs": [
+              "input_a"
+            ],
+            "link_state": "connected",
+            "sequence": "0"
+          }
+        }
+      ]
     }
   ]
 }

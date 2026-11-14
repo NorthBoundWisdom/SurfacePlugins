@@ -74,6 +74,6 @@ final class HardwareFixtureTests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(count, 21)
+        XCTAssertEqual(count, 32)
     }
 }
