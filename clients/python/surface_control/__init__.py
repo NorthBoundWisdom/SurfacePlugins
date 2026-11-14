@@ -1,4 +1,4 @@
-"""Optional Surface Control client for contracts 1.0, 1.1, 1.2 and 1.3. Standard library only; no command retries.
+"""Optional Surface Control client for contracts 1.0, 1.1, 1.2, 1.3 and explicit hardware 1.4. Standard library only; no command retries.
 
 This is the single shared SDK source (SurfacePlugins `clients/python`). Hosts copy it from their
 managed dependency into their delivery; they do not keep their own copy. It is separate from any
@@ -17,8 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-__version__ = "1.3.0"
-CONTRACT_VERSIONS = ("1.0", "1.1", "1.2", "1.3")
+__version__ = "1.4.0"
+CONTRACT_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4")
 PROTOCOL = "2025-11-25"
 PROTOCOLS = ("2025-11-25", "2026-07-28")
 MAX_BYTES = 8 * 1024 * 1024
@@ -156,6 +156,47 @@ def validate_input_declarations(profile):
         require((accepts_input(control) is not None) == declared, "invalid_profile")
 
 
+def validate_hardware_profile(profile):
+    """Contract 1.4 hardware declarations; no device layout or feedback is inferred."""
+    capabilities = profile.get("capabilities", [])
+    registered = {"hardware", "simulation", "controls.stable_ids", "controls.layered", "controls.input_declared",
+                  "input.absolute", "input.relative", "input.button", "input.hold", "feedback.value", "feedback.indicator",
+                  "feedback.unsequenced", "input.independent_sequence", "events.writer_id", "writes.independent_limits"}
+    valid_id = lambda text: isinstance(text, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", text) is not None
+    require(valid_id(profile.get("id")) and isinstance(profile.get("version"), str)
+            and 0 < len(profile["version"].encode()) <= 64, "invalid_profile")
+    require(len(set(capabilities)) == len(capabilities) and "hardware" in capabilities
+            and "simulation" not in capabilities and "controls.input_declared" in capabilities
+            and "input.hold" not in capabilities, "invalid_profile")
+    require(all(valid_id(item) and (item in registered or (item.startswith("x.") and len(item.split(".")) >= 3
+                and all(item.split(".")))) for item in capabilities), "invalid_profile")
+    controls = profile["controls"]
+    require(0 < len(controls) <= 4096 and all(isinstance(row, dict) for row in controls), "invalid_profile")
+    ids = set()
+    for row in controls:
+        ident = row.get("id")
+        require(valid_id(ident) and ident not in ids and row.get("accepts_input") is False and row.get("hold") is None, "invalid_profile")
+        ids.add(ident)
+        kind, encoding = row.get("input_kind"), row.get("encoding")
+        require((kind, encoding) in (("absolute", "scalar"), ("relative", "signedDelta"), ("button", "boolean"))
+                and "input." + kind in capabilities, "invalid_profile")
+        def valid_range(span):
+            return (isinstance(span, dict) and finite(span.get("minimum")) and finite(span.get("maximum"))
+                    and span["minimum"] < span["maximum"]
+                    and ("step" not in span or finite(span["step"]) and span["step"] > 0))
+        require((row.get("range") is None if kind == "button" else valid_range(row.get("range"))), "invalid_profile")
+        if kind == "relative":
+            require(row["range"]["minimum"] < 0 < row["range"]["maximum"], "invalid_profile")
+        feedback = row.get("feedback_kinds")
+        require(isinstance(feedback, list) and len(set(feedback)) == len(feedback)
+                and all(item in ("value", "indicator") and "feedback." + item in capabilities for item in feedback), "invalid_profile")
+        if row.get("feedback_range") is not None:
+            require(encoding != "boolean" and "value" in feedback and valid_range(row["feedback_range"]), "invalid_profile")
+        if row.get("mapping") is not None:
+            require(isinstance(row["mapping"], dict) and row["mapping"].get("kind") in ("parameter", "action")
+                    and valid_id(row["mapping"].get("id")), "invalid_profile")
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if fp is not None:
@@ -171,7 +212,7 @@ class Client:
     """
 
     def __init__(
-        self, url, token, instance_id, *, timeout=2, provider_id=None, provider_header=None, protocol=PROTOCOL
+        self, url, token, instance_id, *, timeout=2, provider_id=None, provider_header=None, protocol=PROTOCOL, accepted_sources=("simulation",)
     ):
         parsed = urllib.parse.urlsplit(url)
         require(
@@ -202,6 +243,11 @@ class Client:
                 and all(33 <= ord(c) < 127 for c in provider_id),
                 "invalid_provider",
             )
+        require(isinstance(accepted_sources, (tuple, list, set, frozenset)) and accepted_sources
+                and set(accepted_sources) <= {"simulation", "hardware"}, "invalid_source_allowlist")
+        self.accepted_sources = tuple(accepted_sources)
+        self.source = "simulation"
+        self.link = None
         self.url, self.token, self.instance_id, self.timeout = url, token, instance_id, timeout
         self.provider_id, self.provider_header = provider_id, provider_header
         require(protocol in PROTOCOLS, "unsupported_protocol")
@@ -326,7 +372,9 @@ class Client:
         require(
             value.get("schema_version") == 1
             and value.get("contract_version") in versions
-            and value.get("source") == "simulation",
+            and value.get("source") in getattr(self, "accepted_sources", ("simulation",))
+            and ((value.get("source") == "hardware" and value.get("contract_version") == "1.4")
+                 or (value.get("source") == "simulation" and value.get("contract_version") != "1.4")),
             "unsupported_contract",
         )
         expected, profile = value.get("expected"), value.get("profile")
@@ -350,10 +398,14 @@ class Client:
             and all(isinstance(item, str) and item for item in profile.get("capabilities", [])),
             "unsupported_profile",
         )
-        if value["contract_version"] in ("1.1", "1.2", "1.3"):
+        if value["contract_version"] in ("1.1", "1.2", "1.3", "1.4"):
             require(mapping_revision(profile) == expected["mapping_revision"], "invalid_identity")
         validate_input_declarations(profile)
-        if value["contract_version"] != "1.3":
+        if value["source"] == "hardware":
+            validate_hardware_profile(profile)
+        else:
+            require("hardware" not in profile.get("capabilities", []), "invalid_profile")
+        if value["contract_version"] not in ("1.3", "1.4"):
             require(not {"input.independent_sequence", "events.writer_id", "writes.independent_limits"}.intersection(profile.get("capabilities", [])), "unsupported_contract")
         latest = cursor(value.get("latest_sequence"))
         require(self.latest_sequence is None or latest >= cursor(self.latest_sequence), "sequence_rollback")
@@ -365,6 +417,7 @@ class Client:
         self.expected, self.latest_sequence = expected, value["latest_sequence"]
         self.latest_input_sequence = latest_input
         self.contract_version, self.profile = value["contract_version"], profile
+        self.source = value["source"]
         return value
 
     def _read_input_sequence(self, value, *, key="latest_input_sequence", global_key="latest_sequence", profile=None):
@@ -411,8 +464,9 @@ class Client:
         value = self.call("surface_control_snapshot", {"instance_id": self.instance_id})
         require(value.get("discovery", {}).get("expected") == self.expected, "context_changed")
         require(
-            value["discovery"].get("source") == "simulation" and finite(value.get("server_time")), "invalid_snapshot"
+            value["discovery"].get("source") == getattr(self, "source", "simulation") and finite(value.get("server_time")), "invalid_snapshot"
         )
+        self._validate_link(value)
         latest = cursor(value.get("latest_sequence"))
         require(self.latest_sequence is None or latest >= cursor(self.latest_sequence), "sequence_rollback")
         self._observe_time(value["server_time"])
@@ -426,6 +480,16 @@ class Client:
         self.latest_sequence = value["latest_sequence"]
         self.latest_input_sequence = latest_input
         return value
+
+    def _validate_link(self, value):
+        if getattr(self, "source", "simulation") == "hardware":
+            link = value.get("link")
+            require(isinstance(link, dict) and set(link) == {"state"}
+                    and link["state"] in ("connected", "disconnected"), "invalid_link")
+            require(not value.get("holds"), "invalid_link")
+            self.link = dict(link)
+        else:
+            require("link" not in value, "invalid_link")
 
     def refresh_sequence(self):
         """Read one snapshot and return its highwater. Never replay a mutation.
@@ -443,6 +507,8 @@ class Client:
 
     def mutate(self, suffix, fields, extra=None, *, sequenced=True, input_cas=False):
         require(self.expected is not None and self.latest_sequence is not None, "not_initialized")
+        if getattr(self, "source", "simulation") == "hardware" and suffix != "feedback":
+            raise SurfaceError({"input": "permission_denied", "renew": "unsupported_hold", "reset": "unsupported_tool"}.get(suffix, "unsupported_tool"))
         before = cursor(self.latest_sequence)
         before_input = cursor(self.latest_input_sequence) if self.latest_input_sequence is not None else None
         arguments = {"expected": self.expected, **fields, **(extra or {})}
@@ -479,7 +545,7 @@ class Client:
         else:
             require(
                 value.get("expected") == self.expected
-                and value.get("source") == "simulation"
+                and value.get("source") == getattr(self, "source", "simulation")
                 and (cursor(value.get("sequence")) == before + 1 if sequenced and not input_cas else cursor(value.get("sequence")) > before)
                 and finite(value.get("time"))
                 and value.get("origin") == "remote"
@@ -507,6 +573,7 @@ class Client:
     def input(self, control_id, encoding, value, hold_s=None, *, cas="auto"):
 
         """Submit one input. `hold_s` (contract 1.1) requests a lease; the host returns `hold_deadline`."""
+        require(getattr(self, "source", "simulation") != "hardware", "permission_denied")
         extra = None
         if hold_s is not None:
             require(finite(hold_s) and hold_s > 0 and self.contract_version in ("1.1", "1.2", "1.3"), "unsupported_hold")
@@ -538,6 +605,7 @@ class Client:
 
         `hold_expired` means the lease is gone: the host restored the rest value. Prepare a new input.
         """
+        require(getattr(self, "source", "simulation") != "hardware", "unsupported_hold")
         require(self.expected is not None and self.contract_version in ("1.1", "1.2", "1.3"), "unsupported_hold")
         require(finite(hold_s) and hold_s > 0, "invalid_argument")
         value = self.call(
@@ -580,6 +648,9 @@ class EventCursor:
         """Start after a snapshot's highwater. Historical events are deliberately discarded."""
         require(self.sequence is None and not self.invalidated, "recovery_required")
         require(snapshot.get("discovery", {}).get("expected") == self.client.expected, "context_changed")
+        if getattr(self.client, "source", "simulation") == "hardware":
+            self.client._validate_link(snapshot)
+            require(snapshot["link"]["state"] == "connected", "link_disconnected")
         self.expected = dict(self.client.expected)
         self.sequence = cursor(snapshot["latest_sequence"])
         value = self.client._read_input_sequence(snapshot)
@@ -617,6 +688,8 @@ class EventCursor:
         received = self.tick()
         require(received - started <= self.max_age, "input_stale")
         require(page.get("expected") == expected and finite(page.get("server_time")), "context_changed")
+        self.client._validate_link(page)
+        require(getattr(self.client, "source", "simulation") != "hardware" or page["link"]["state"] == "connected", "link_disconnected")
         self.client._observe_time(page["server_time"])
         require(cursor(page.get("latest_sequence")) >= cursor(self.client.latest_sequence), "sequence_rollback")
         events = page.get("events")
@@ -626,14 +699,14 @@ class EventCursor:
             require(
                 isinstance(event, dict)
                 and event.get("expected") == expected
-                and event.get("source") == "simulation"
+                and event.get("source") == getattr(self.client, "source", "simulation")
                 and cursor(event.get("sequence")) == self.sequence + 1,
                 "event_gap",
             )
             require(
                 event.get("kind") in EVENT_KINDS
                 and event.get("disposition") in {"accepted", "ignored"}
-                and event.get("origin") in {"interface", "remote"}
+                and event.get("origin") in ({"hardware"} if getattr(self.client, "source", "simulation") == "hardware" and event.get("kind") == "input" else {"interface", "remote"})
                 and isinstance(event.get("control_id"), str)
                 and finite(event.get("time"))
                 and (self.last_event_time is None or event["time"] >= self.last_event_time)
@@ -786,7 +859,7 @@ class BinaryRoleCursor:
                     "values": dict(self.values),
                     "expected": dict(self.events.expected),
                     "sequence": event["sequence"],
-                    "source": "simulation",
+                    "source": getattr(self.client, "source", "simulation"),
                     "origin": event["origin"],
                     "reason": event.get("reason"),
                     "received_monotonic": entry["received_monotonic"],
