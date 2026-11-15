@@ -6,9 +6,20 @@ from __future__ import annotations
 import copy
 import hmac
 import json
+import socketserver
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from surface_control import SurfaceError, admits, cursor, mapping_revision, validate_hardware_profile
+
+
+class _LoopbackHTTPServer(ThreadingHTTPServer):
+    """HTTPServer.server_bind resolves its host with socket.getfqdn(), a reverse DNS lookup that
+    stalls for about 35 s on hosted macOS runners. The name is only used in logs; keep the IP."""
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
 
 TEST_DOUBLE_ID = "surface-control-test-only-hardware-double"
 WARNING = "TEST DOUBLE ONLY: not a physical device; cannot be acceptance evidence"
@@ -230,7 +241,7 @@ class TestOnlyHardwareHost:
                 except (ValueError, KeyError, TypeError):
                     self.send_error(400)
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        self.server = _LoopbackHTTPServer(("127.0.0.1", port), Handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.url = "http://127.0.0.1:" + str(self.server.server_address[1]) + "/mcp"
