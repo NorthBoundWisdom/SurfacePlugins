@@ -12,13 +12,17 @@ public struct OutputRemoteBinding: RemoteBinding {
     public func snapshot() -> PluginSnapshot { plugin.snapshot() }
     public mutating func handle(_ input: PluginInput, at time: PluginTime) throws -> PluginUpdate { try plugin.handle(input, at: time) }
     public init(instanceID: String, plugin: ParameterOutputPlugin) { self.instanceID = instanceID; self.plugin = plugin }
-    public var tools: [RemoteToolDescriptor] {
+    public var tools: [RemoteToolDescriptor] { Self.toolDescriptors }
+    // Tool declarations are instance-independent immutable values. Reuse their storage during
+    // strict replacement validation rather than reconstructing the same nested schemas per tick.
+    private static let toolDescriptors: [RemoteToolDescriptor] = {
         let s = RemoteSchema.self
         let output = s.object(["started": s.boolean, "requested_enabled": s.boolean, "status": s.string])
         return ["snapshot", "enable", "disable"].map {
             .init(name: "surface_output_" + $0, fields: ["instance_id": s.string], output: output, isMutation: $0 != "snapshot")
         }
-    }
+    }()
+
     public mutating func call(_ name: String, arguments: JSONValue, context: RemoteCallContext) throws -> JSONValue {
         do { return try execute(name, arguments: arguments, context: context) }
         catch { throw RemoteFailure.from(error) }

@@ -13,14 +13,17 @@ public struct RobotRemoteBinding: RemoteBinding {
     public func snapshot() -> PluginSnapshot { plugin.snapshot() }
     public mutating func handle(_ input: PluginInput, at time: PluginTime) throws -> PluginUpdate { try plugin.handle(input, at: time) }
     public init(instanceID: String, plugin: RobotPlugin) { self.instanceID = instanceID; self.plugin = plugin }
-    private var actualSchema: JSONValue { let s = RemoteSchema.self; return s.object(["joints_rad": s.array(s.number), "joint_velocity_rad_s": s.array(s.number), "base_from_tool_row_major_m": s.array(s.number)]) }
-    private var stateSchema: JSONValue {
+    private static var actualSchema: JSONValue { let s = RemoteSchema.self; return s.object(["joints_rad": s.array(s.number), "joint_velocity_rad_s": s.array(s.number), "base_from_tool_row_major_m": s.array(s.number)]) }
+    private static var stateSchema: JSONValue {
         let s = RemoteSchema.self
         var fields: [String: JSONValue] = ["metadata": s.metadata, "actual": s.nullable(actualSchema), "stopped": s.boolean, "trace_dropped": s.integer]
         fields.merge(["target_joints_rad": s.nullable(s.array(s.number)), "motion_active": s.boolean]) { _, new in new }
         return s.object(fields)
     }
-    public var tools: [RemoteToolDescriptor] {
+    public var tools: [RemoteToolDescriptor] { Self.toolDescriptors }
+    // Tool declarations are instance-independent immutable values. Reuse their storage during
+    // strict replacement validation rather than reconstructing the same nested schemas per tick.
+    private static let toolDescriptors: [RemoteToolDescriptor] = {
         let s = RemoteSchema.self
         let base = ["instance_id": s.string]
         let generation = base.merging(["generation": s.string]) { _,new in new }
@@ -39,7 +42,8 @@ public struct RobotRemoteBinding: RemoteBinding {
         add("advance", base.merging(["dt_s": s.number]) { _,new in new }, stateSchema)
         add("reset", generation, stateSchema)
         return result
-    }
+    }()
+
     private func proof(_ a: RemoteArguments) throws -> DeviceCommandProof {
         try .init(generation: a.string("generation"), token: a.string("control_token"), sequence: a.integer("sequence"))
     }
