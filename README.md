@@ -26,6 +26,10 @@ Importing from a delivered SDK zip writes nothing.
 Python checks: `python3 -m unittest discover -s clients/python/tests` and
 `python3 -m unittest discover -s integrations/pipe/tests`.
 
+The test-only loopback host wakes its selector through a local socket when closing, while retaining
+its default 0.5-second service poll. Shutdown tests cover the default, a 60-second poll woken by an
+explicit close, and close/restart. No wire contract or runtime SDK behavior changes.
+
 Foundation-only Swift 6 value-state plugins. Each product can be imported independently;
 there is no umbrella product. Production plugins depend on SurfacePluginContracts and, for device simulations, the
 Foundation-only SimulationContracts utility. Plugins never import one another.

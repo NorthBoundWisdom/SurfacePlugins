@@ -6,6 +6,8 @@ from __future__ import annotations
 import copy
 import hmac
 import json
+import selectors
+import socket
 import socketserver
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -19,6 +21,40 @@ class _LoopbackHTTPServer(ThreadingHTTPServer):
     def server_bind(self):
         socketserver.TCPServer.server_bind(self)
         self.server_name, self.server_port = self.server_address[:2]
+
+    def __init__(self, *args, **kwargs):
+        self._stop_requested = threading.Event()
+        self._serving_finished = threading.Event()
+        self._wake_read, self._wake_write = socket.socketpair()
+        super().__init__(*args, **kwargs)
+
+    def serve_forever(self, poll_interval=0.5):
+        # Preserve the stdlib service_actions cadence. Shutdown wakes the selector through a
+        # separate local socket instead of waiting for that real-time polling interval.
+        # This private server is one-shot; TestOnlyHardwareHost.start creates a fresh one.
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(self, selectors.EVENT_READ, "http")
+                selector.register(self._wake_read, selectors.EVENT_READ, "shutdown")
+                while not self._stop_requested.is_set():
+                    ready = selector.select(poll_interval)
+                    if self._stop_requested.is_set():
+                        break
+                    if any(key.data == "http" for key, _ in ready):
+                        self._handle_request_noblock()
+                    self.service_actions()
+        finally:
+            self._serving_finished.set()
+
+    def shutdown(self):
+        self._stop_requested.set()
+        self._wake_write.send(b"\0")
+        self._serving_finished.wait()
+
+    def server_close(self):
+        super().server_close()
+        self._wake_read.close()
+        self._wake_write.close()
 
 
 TEST_DOUBLE_ID = "surface-control-test-only-hardware-double"
