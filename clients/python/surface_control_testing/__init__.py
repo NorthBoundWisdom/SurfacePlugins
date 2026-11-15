@@ -4,6 +4,7 @@ This separate package is not the runtime SDK. Scripts are trusted test setup, ne
 """
 from __future__ import annotations
 import copy
+import hmac
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -194,7 +195,7 @@ class TestOnlyHardwareHost:
                 pass
 
             def do_POST(self):
-                if self.path != "/mcp" or self.headers.get("Authorization") != "Bearer " + host.token:
+                if self.path != "/mcp" or not hmac.compare_digest(self.headers.get("Authorization", "").encode(), ("Bearer " + host.token).encode()):
                     self.send_error(403)
                     return
                 try:
