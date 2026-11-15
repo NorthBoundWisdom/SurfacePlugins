@@ -48,3 +48,28 @@ Profile IDs and versions remain host-owned, and hardware qualification remains p
 | SDK | Simulation contracts | Hardware contracts |
 | --- | --- | --- |
 | 1.4.0 | 1.0, 1.1, 1.2, 1.3 | 1.4 with explicit hardware opt-in |
+
+## Provider 1.0 frozen tool set and additive tools
+
+Provider 1.0 freezes the names, schemas and error semantics of its existing tools.
+Adding registered tools preserves compatibility; a change in the total number returned by
+`tools/list` does not by itself change the frozen tools or require a new Provider version.
+Tools for an optional capability must appear only when that capability is explicitly enabled.
+The default startup catalog and the increment from each capability must have black-box tests.
+
+The BCR host owns the exact frozen set of 25 tools and the registry of additions. Its delivery
+must include the frozen descriptors and their SHA-256 hashes, the registered additions and
+their activation conditions, and a read-only catalog check. That check compares the frozen
+descriptors byte for byte using the documented deterministic JSON encoding and refuses any
+unregistered tool or unexpected optional increment. Consumers pin the delivery manifest and
+run this check before replacing a previous Provider delivery. Schema and SDK ZIP equality
+alone does not verify the runtime catalog or error semantics; existing error regression tests
+remain required.
+
+The workspace compatibility ruling is:
+
+> Provider 1.0 的冻结范围是已有工具的名字、Schema、错误语义；新增工具属于加法，不破坏兼容。
+> 加法须登记且可核对，仅对应显式开启能力的工具在该能力启用时才出现。
+
+This ruling does not permit changing an existing tool's behavior, hiding a changed descriptor
+behind the same name, or changing any already published attachment.

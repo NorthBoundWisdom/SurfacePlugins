@@ -125,13 +125,22 @@ hardware there; this does not alter the simulator's contract or make hardware th
 Include `surface-control-hardware-tools.json`, `surface-control-hardware-examples.json`, the
 hardware fixture and host-owned role mapping as additional hashed files.
 
-SDK 1.4.0 zips contain `surface_control/`, `surface_conformance/` and the **separate**
-`surface_control_testing/` directory (including its warning and usage document). The test double
-must not be nested inside the runtime `surface_control/` package. List its own identity in
-`test_artifacts: [{"artifact": "surface-control-test-only-hardware-double", "qualification": "test-only"}]`.
-Hash the test package files exactly like other shared sources. This identity is never a host
-product, real hardware, or acceptance evidence. Consumers must use it only in tests. Real
-hardware qualification always requires attended per-device and per-delivery validation.
+Runtime SDK 1.4.0 zips contain `surface_control/` and `surface_conformance/`; they **must not
+contain `surface_control_testing/`**, even as a sibling of the runtime package. Deliver test
+support only in a separate, explicitly test-only ZIP or directory, including its warning and
+usage document. Loading that support requires an explicit additional test import path; normal
+runtime SDK extraction must not make the test host importable. Test-support users also load
+the runtime SDK for its shared client and conformance dependencies.
+
+List the support's separate location and identity in the host manifest's `test_artifacts`,
+including `artifact: "surface-control-test-only-hardware-double"` and
+`qualification: "test-only"`. Hash the support files through the same delivery/shared-source
+hash rules. Packaging tests must reject any runtime ZIP member whose first path component is
+`surface_control_testing` and verify that explicitly loading the separate support works outside
+the source tree. These rules apply to new builds; do not replace a published attachment.
+This identity is never a host product, real hardware, or acceptance evidence. Consumers must
+use it only in tests. Real hardware qualification always requires attended per-device and
+per-delivery validation.
 
 ## Read-only diagnostic companion
 

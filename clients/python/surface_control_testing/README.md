@@ -2,9 +2,12 @@
 
 This separate test package cannot be used as acceptance or qualification evidence. It never
 loads a device driver. Scripts are trusted test setup; no public tool injects hardware input.
+It is delivered in a separate test-only ZIP or directory, never in the runtime SDK ZIP.
+Extract both archives into separate directories and explicitly add the test-support path only
+for a test process:
 
 ```sh
-PYTHONPATH=/path/to/extracted-sdk python3 -B -m surface_control_testing \
+PYTHONPATH=/path/to/extracted-test-support:/path/to/extracted-sdk python3 -B -m surface_control_testing \
   --token-file /private/test-token --ready-file /tmp/test-double-ready.json \
   --script /tmp/test-script.json
 ```
