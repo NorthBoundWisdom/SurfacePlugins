@@ -138,7 +138,9 @@ public extension JSONValue {
     }
 
     static func encoded<T: Encodable>(_ value: T) throws -> JSONValue {
-        try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(value))
+        let data = try JSONEncoder().encode(value)
+        // Same value as decoding with JSONDecoder, without one thrown probe per JSON value.
+        return try JSONValueParser.parse(data) ?? JSONDecoder().decode(JSONValue.self, from: data)
     }
 
     func decoded<T: Decodable>(_ type: T.Type) throws -> T {
