@@ -5,6 +5,20 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: every tracked file gets its last commit time.
+          fetch-depth: 0
+      # SwiftPM rebuilds any input whose mtime changed. Commit times keep a restored build incremental:
+      # files untouched since the cached build look unchanged, changed files rebuild.
+      - run: python3 scripts/restore_git_mtimes.py
+      - name: Identify the Swift toolchain for the build cache
+        run: python3 -c "import hashlib, subprocess; v = subprocess.run(['swift', '--version'], capture_output=True); print('SWIFT_ID=' + hashlib.sha256(v.stdout + v.stderr).hexdigest()[:16])" >> "$GITHUB_ENV"
+      - name: Restore the latest SwiftPM build
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/swiftpm
+          key: swiftpm-${{ runner.os }}-${{ env.SWIFT_ID }}-${{ github.sha }}
+          restore-keys: swiftpm-${{ runner.os }}-${{ env.SWIFT_ID }}-
       - run: swift --version
       - run: swift build --build-path build/swiftpm
       - run: swift test --build-path build/swiftpm
@@ -21,14 +35,36 @@ jobs:
       - run: build/schema-validation/bin/python scripts/validate_surface_control_schemas.py --examples build/surface-control-examples.json
       - run: build/schema-validation/bin/python -B scripts/validate_surface_conformance_reports.py
       - run: python3 configs/check_boundaries.py
+      - name: Save the SwiftPM build for the next push
+        if: success() && github.event_name == 'push'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/swiftpm
+          key: swiftpm-${{ runner.os }}-${{ env.SWIFT_ID }}-${{ github.sha }}
   linux:
     runs-on: ubuntu-24.04
     container: swift:6.2-noble
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: every tracked file gets its last commit time.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Trust the checked-out workspace in the container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      # SwiftPM rebuilds any input whose mtime changed. Commit times keep a restored build incremental:
+      # files untouched since the cached build look unchanged, changed files rebuild.
+      - run: python3 scripts/restore_git_mtimes.py
+      - name: Identify the Swift toolchain for the build cache
+        run: python3 -c "import hashlib, subprocess; v = subprocess.run(['swift', '--version'], capture_output=True); print('SWIFT_ID=' + hashlib.sha256(v.stdout + v.stderr).hexdigest()[:16])" >> "$GITHUB_ENV"
+      - name: Restore the latest SwiftPM build
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/swiftpm
+          key: swiftpm-${{ runner.os }}-${{ env.SWIFT_ID }}-${{ github.sha }}
+          restore-keys: swiftpm-${{ runner.os }}-${{ env.SWIFT_ID }}-
       - run: swift --version
       - run: swift build --build-path build/swiftpm
       - run: swift test --build-path build/swiftpm
@@ -46,3 +82,9 @@ jobs:
       - run: build/schema-validation/bin/python scripts/validate_surface_control_schemas.py --examples build/surface-control-examples.json
       - run: build/schema-validation/bin/python -B scripts/validate_surface_conformance_reports.py
       - run: python3 configs/check_boundaries.py
+      - name: Save the SwiftPM build for the next push
+        if: success() && github.event_name == 'push'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/swiftpm
+          key: swiftpm-${{ runner.os }}-${{ env.SWIFT_ID }}-${{ github.sha }}
