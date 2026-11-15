@@ -10,15 +10,18 @@ import OutputRemoteBinding
 
 final class ImmutableDescriptorTests: XCTestCase {
     func testDescriptorsDoNotCaptureInstanceOrLifecycleState() throws {
+        // Empty gates are invalid: use a valid axis so this fixture reaches every descriptor,
+        // lifecycle and cross-instance routing assertion below.
+        let limits = [MotionLimit(id: "axis", minimum: 0, maximum: 1, maximumChange: 1, maximumVelocity: 1)]
         let first: [any RemoteBinding] = [
             RobotRemoteBinding(instanceID: "robot.a", plugin: try RobotPlugin(instanceID: "robot.a")),
             ChassisRemoteBinding(instanceID: "chassis.a", plugin: try ChassisPlugin(instanceID: "chassis.a")),
-            OutputRemoteBinding(instanceID: "output.a", plugin: try ParameterOutputPlugin(limits: []))
+            OutputRemoteBinding(instanceID: "output.a", plugin: try ParameterOutputPlugin(limits: limits))
         ]
         let second: [any RemoteBinding] = [
             RobotRemoteBinding(instanceID: "robot.b", plugin: try RobotPlugin(instanceID: "robot.b")),
             ChassisRemoteBinding(instanceID: "chassis.b", plugin: try ChassisPlugin(instanceID: "chassis.b")),
-            OutputRemoteBinding(instanceID: "output.b", plugin: try ParameterOutputPlugin(limits: []))
+            OutputRemoteBinding(instanceID: "output.b", plugin: try ParameterOutputPlugin(limits: limits))
         ]
         for (var binding, other) in zip(first, second) {
             let tools = binding.tools
