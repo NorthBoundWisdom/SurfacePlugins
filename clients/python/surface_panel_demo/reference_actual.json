@@ -1,0 +1,684 @@
+{
+  "chassis_model" : "reference-ackermann-v1",
+  "frames" : [
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 0,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 0
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.001337,
+        -0.00107,
+        0.000802,
+        -0.000535,
+        0.000267,
+        -0.001605
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.1,
+      "steering_rad" : 0.1,
+      "time_s" : 0.1
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.009608,
+        -0.007686,
+        0.005765,
+        -0.003843,
+        0.001922,
+        -0.011529
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.2,
+      "steering_rad" : 0.2,
+      "time_s" : 0.2
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.02896,
+        -0.023168,
+        0.017376,
+        -0.011584,
+        0.005792,
+        -0.034752
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.3,
+      "steering_rad" : 0.3,
+      "time_s" : 0.3
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.060934,
+        -0.048747,
+        0.036561,
+        -0.024374,
+        0.012187,
+        -0.073121
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.4,
+      "steering_rad" : 0.3,
+      "time_s" : 0.4
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.104938,
+        -0.083951,
+        0.062963,
+        -0.041975,
+        0.020988,
+        -0.125926
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.5,
+      "steering_rad" : 0.3,
+      "time_s" : 0.5
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.15872,
+        -0.126976,
+        0.095232,
+        -0.063488,
+        0.031744,
+        -0.190464
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 0.6
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.218842,
+        -0.175074,
+        0.131305,
+        -0.087537,
+        0.043768,
+        -0.262611
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 0.7
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.281158,
+        -0.224926,
+        0.168695,
+        -0.112463,
+        0.056232,
+        -0.337389
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 0.8
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.34128,
+        -0.273024,
+        0.204768,
+        -0.136512,
+        0.068256,
+        -0.409536
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 0.9
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.395062,
+        -0.316049,
+        0.237037,
+        -0.158025,
+        0.079012,
+        -0.474074
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.439066,
+        -0.351253,
+        0.263439,
+        -0.175626,
+        0.087813,
+        -0.526879
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1.1
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.47104,
+        -0.376832,
+        0.282624,
+        -0.188416,
+        0.094208,
+        -0.565248
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1.2
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.490392,
+        -0.392314,
+        0.294235,
+        -0.196157,
+        0.098078,
+        -0.588471
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1.3
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.498663,
+        -0.39893,
+        0.299198,
+        -0.199465,
+        0.099733,
+        -0.598395
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1.4
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.5,
+        -0.4,
+        0.3,
+        -0.2,
+        0.1,
+        -0.6
+      ],
+      "phase" : 1,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1.5
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.5,
+        -0.4,
+        0.3,
+        -0.2,
+        0.1,
+        -0.6
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0.6,
+      "steering_rad" : 0.3,
+      "time_s" : 1.6
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.498663,
+        -0.39893,
+        0.299198,
+        -0.199465,
+        0.099733,
+        -0.598395
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0.5,
+      "steering_rad" : 0.2,
+      "time_s" : 1.7
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.490392,
+        -0.392314,
+        0.294235,
+        -0.196157,
+        0.098078,
+        -0.588471
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0.4,
+      "steering_rad" : 0.1,
+      "time_s" : 1.8
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.47104,
+        -0.376832,
+        0.282624,
+        -0.188416,
+        0.094208,
+        -0.565248
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0.3,
+      "steering_rad" : -0,
+      "time_s" : 1.9
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.439066,
+        -0.351253,
+        0.263439,
+        -0.175626,
+        0.087813,
+        -0.526879
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0.2,
+      "steering_rad" : -0.1,
+      "time_s" : 2
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.395062,
+        -0.316049,
+        0.237037,
+        -0.158025,
+        0.079012,
+        -0.474074
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0.1,
+      "steering_rad" : -0.2,
+      "time_s" : 2.1
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.34128,
+        -0.273024,
+        0.204768,
+        -0.136512,
+        0.068256,
+        -0.409536
+      ],
+      "phase" : 2,
+      "speed_m_s" : 0,
+      "steering_rad" : -0.2,
+      "time_s" : 2.2
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.281158,
+        -0.224926,
+        0.168695,
+        -0.112463,
+        0.056232,
+        -0.337389
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.1,
+      "steering_rad" : -0.2,
+      "time_s" : 2.3
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.218842,
+        -0.175074,
+        0.131305,
+        -0.087537,
+        0.043768,
+        -0.262611
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.2,
+      "steering_rad" : -0.2,
+      "time_s" : 2.4
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.15872,
+        -0.126976,
+        0.095232,
+        -0.063488,
+        0.031744,
+        -0.190464
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 2.5
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.104938,
+        -0.083951,
+        0.062963,
+        -0.041975,
+        0.020988,
+        -0.125926
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 2.6
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.060934,
+        -0.048747,
+        0.036561,
+        -0.024374,
+        0.012187,
+        -0.073121
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 2.7
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.02896,
+        -0.023168,
+        0.017376,
+        -0.011584,
+        0.005792,
+        -0.034752
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 2.8
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.009608,
+        -0.007686,
+        0.005765,
+        -0.003843,
+        0.001922,
+        -0.011529
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 2.9
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0.001337,
+        -0.00107,
+        0.000802,
+        -0.000535,
+        0.000267,
+        -0.001605
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 3
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 2,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 3.1
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : -0.3,
+      "steering_rad" : -0.2,
+      "time_s" : 3.2
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : -0.2,
+      "steering_rad" : -0.1,
+      "time_s" : 3.3
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : -0.1,
+      "steering_rad" : 0,
+      "time_s" : 3.4
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 3.5
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 3.6
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 3.7
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 3.8
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 3,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 3.9
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 0,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 4
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 0,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 4.1
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 0,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 4.2
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 0,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 4.3
+    },
+    {
+      "fault" : false,
+      "joints_rad" : [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "phase" : 0,
+      "speed_m_s" : 0,
+      "steering_rad" : 0,
+      "time_s" : 4.4
+    }
+  ],
+  "period_s" : 4.4,
+  "robot_model" : "reference-six-joint-v1",
+  "schema_version" : 1,
+  "source" : "synthetic-reference-simulators"
+}

@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "source": "simulation",
+      "profile_id": "bcr2000.mock",
+      "profile_version": "1.3",
+      "targets": [
+        {
+          "control_id": "pushEncoder.1.1",
+          "kind": "value",
+          "field": "joint.1",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.2",
+          "kind": "value",
+          "field": "joint.2",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.3",
+          "kind": "value",
+          "field": "joint.3",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.4",
+          "kind": "value",
+          "field": "joint.4",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.5",
+          "kind": "value",
+          "field": "joint.5",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.6",
+          "kind": "value",
+          "field": "joint.6",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.7",
+          "kind": "value",
+          "field": "speed",
+          "rest": 0,
+          "source_range": [
+            -1,
+            1
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.8",
+          "kind": "value",
+          "field": "steering",
+          "rest": 0,
+          "source_range": [
+            -0.5,
+            0.5
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "encoder.1.1",
+          "kind": "value",
+          "field": "phase",
+          "rest": 0,
+          "source_range": [
+            0,
+            3
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "button.1.1",
+          "kind": "indicator",
+          "field": "fresh",
+          "rest": "off"
+        }
+      ]
+    },
+    {
+      "source": "hardware",
+      "profile_id": "bcr2000.hardware",
+      "profile_version": "1.4",
+      "targets": [
+        {
+          "control_id": "pushEncoder.1.1",
+          "kind": "value",
+          "field": "joint.1",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.2",
+          "kind": "value",
+          "field": "joint.2",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.3",
+          "kind": "value",
+          "field": "joint.3",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.4",
+          "kind": "value",
+          "field": "joint.4",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.5",
+          "kind": "value",
+          "field": "joint.5",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.6",
+          "kind": "value",
+          "field": "joint.6",
+          "rest": 0,
+          "source_range": [
+            -3.141592653589793,
+            3.141592653589793
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.7",
+          "kind": "value",
+          "field": "speed",
+          "rest": 0,
+          "source_range": [
+            -1,
+            1
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "pushEncoder.1.8",
+          "kind": "value",
+          "field": "steering",
+          "rest": 0,
+          "source_range": [
+            -0.5,
+            0.5
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "encoder.1.1",
+          "kind": "value",
+          "field": "phase",
+          "rest": 0,
+          "source_range": [
+            0,
+            3
+          ],
+          "output_range": [
+            0,
+            127
+          ]
+        },
+        {
+          "control_id": "button.1.1",
+          "kind": "indicator",
+          "field": "fresh",
+          "rest": "off"
+        }
+      ]
+    }
+  ]
+}
