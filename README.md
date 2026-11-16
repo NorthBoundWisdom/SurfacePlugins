@@ -135,3 +135,7 @@ from zero); it is retained without a deprecation warning for old provider behavi
 command parsing uses exactIntValue, which preserves number(Int) and rejects fractional or
 nonfinite Double values. The simulator event/catch-up limits and timed silent commit contract
 are documented in docs/remote-tools.md.
+
+G-9 retains the existing JSONValue decoding paths. Numeric, syntax and arbitrary Decoder
+differences and their reproduction method are recorded in
+[JSON decoding differences](docs/json-decoding-differences.md).
