@@ -46,6 +46,15 @@ capture_schema14 = json.loads((ROOT / "docs/surface-control-diagnostic-capture.s
 Draft202012Validator.check_schema(capture_schema14)
 capture_schema = json.loads((ROOT / "docs/surface-control-diagnostic-capture-v1.5.schema.json").read_bytes())
 Draft202012Validator.check_schema(capture_schema)
+# Consumers register both SDK schema resources together; a duplicate URI must not
+# replace the frozen SDK1.4 resource silently.
+from referencing import Registry, Resource
+capture_registry = Registry().with_resources([
+    (capture_schema14["$id"], Resource.from_contents(capture_schema14)),
+    (capture_schema["$id"], Resource.from_contents(capture_schema)),
+])
+assert capture_registry.contents(capture_schema14["$id"]) == capture_schema14, "SDK1.5 schema overwrote frozen SDK1.4 resource URI"
+assert capture_registry.contents(capture_schema["$id"]) == capture_schema
 with TestOnlyHardwareHost("diagnostic-schema-test-only") as host:
     host.connected = False
     client = ReadOnlyClient(host.url, "diagnostic-schema-test-only", host.instance_id, accepted_sources=("hardware",))
@@ -80,3 +89,21 @@ with TestOnlyHardwareHost("diagnostic-sdk14-schema-test-only") as host:
     assert diagnostic14["diagnostic_status"] == "incomplete_or_failed" and diagnostic14["exit_code"] == 1
     assert diagnostic14["validated_page_count"] == 0 and diagnostic14["physical_qualification"] is False
 print(json.dumps({"status": "pass", "frozen_sdk14_original_capture_schema": True, "current_sdk15_capture_schema": True}))
+
+# Resolve by URI, not by passing an isolated in-memory schema that hides collisions.
+validator14 = Draft202012Validator({"$ref": capture_schema14["$id"]}, registry=capture_registry)
+validator15 = Draft202012Validator({"$ref": capture_schema["$id"]}, registry=capture_registry)
+validator14.validate(captured14)
+validator15.validate(captured)
+assert list(validator14.iter_errors(captured)), "SDK1.5 capture must not validate as SDK1.4"
+assert list(validator15.iter_errors(captured14)), "SDK1.4 capture must not validate as SDK1.5"
+# Deliberately reproduce the old URI collision: later registration overwrites the old
+# resource and rejects a genuine old-SDK capture. This negative control must remain red.
+colliding_registry = Registry().with_resources([
+    (capture_schema14["$id"], Resource.from_contents(capture_schema14)),
+    (capture_schema14["$id"], Resource.from_contents(capture_schema)),
+])
+assert colliding_registry.contents(capture_schema14["$id"]) != capture_schema14
+assert list(Draft202012Validator({"$ref": capture_schema14["$id"]}, registry=colliding_registry).iter_errors(captured14))
+print(json.dumps({"status": "pass", "coexisting_diagnostic_schema_ids": [capture_schema14["$id"], capture_schema["$id"]],
+                  "genuine_old_and_current_capture_uri_resolution": True, "deliberate_uri_collision_rejected_old_capture": True}))

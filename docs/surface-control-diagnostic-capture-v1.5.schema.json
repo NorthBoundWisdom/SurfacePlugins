@@ -261,7 +261,7 @@
     "end"
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:surface-control:diagnostic-capture:1",
+  "$id": "urn:surface-control:diagnostic-capture:1:sdk:1.5.0",
   "description": "Structural envelope only. Run the offline SDK-based verifier for cross-field, sequence, link and recorded-value invariants. No authenticity or physical qualification.",
   "allOf": [
     {
