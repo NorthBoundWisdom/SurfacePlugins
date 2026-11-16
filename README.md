@@ -5,6 +5,11 @@ profiles, typed inputs, feedback, and an independent bounded journal through
 `SurfaceControlContracts`. Its [public tool schemas](docs/surface-control-tools.json) are
 generated with `swift run surface-control-schema`; hosts package the same descriptors.
 
+Device-neutral controller regression scenarios and validators belong to
+[ControlSurfaceKit](https://github.com/NorthBoundWisdom/ControlSurfaceKit).
+See the [migration and ownership note](docs/controller-regression.md). The two
+libraries have no dependency on each other; hosts compose them independently.
+
 Repository layout beyond Swift targets (never referenced by any Swift target):
 
 - `clients/python/surface_control/`: the single shared Python SDK (1.3.0, standard library only)
