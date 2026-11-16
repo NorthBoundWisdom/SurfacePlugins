@@ -1,0 +1,2377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:astrocontroller:neutral-controller-regression:1",
+  "$defs": {
+    "expectation": {
+      "type": "object",
+      "properties": {
+        "metric": {
+          "enum": [
+            "accepted_transport_count",
+            "action_fire1_count",
+            "action_fire2_count",
+            "authority_error_visible",
+            "authorization_rules_equal",
+            "automatic_action_replay_count",
+            "automatic_echo_replay_count",
+            "device_output_count",
+            "display_output_count",
+            "display_plan_valid",
+            "enable_binding_count",
+            "feedback_endpoint",
+            "hardware_context",
+            "journal_gap",
+            "layer_consistent",
+            "layer_select_output_count",
+            "manual_authority_granted",
+            "monotonic_policy_preserved",
+            "motion_eligible",
+            "motor_output_count",
+            "motor_permission",
+            "observed_value",
+            "old_authorization_valid",
+            "parameter_p1",
+            "pending_motor_count",
+            "prepared_motor_plan_count",
+            "provenance_preserved",
+            "qualification_upgraded",
+            "raw_input_echo_count",
+            "relative_delta_sum",
+            "release_count",
+            "rendered_value",
+            "restore_identity_valid",
+            "result_certain",
+            "revoked_motor_plan_count",
+            "route_generation",
+            "sent_value",
+            "software_page",
+            "touch_continuity_trusted",
+            "transaction_progress",
+            "value_projection_output_count"
+          ]
+        },
+        "relation": {
+          "enum": [
+            "equals",
+            "not_equals",
+            "unchanged",
+            "increased_by",
+            "at_least",
+            "increased"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        "instance_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+        }
+      },
+      "required": [
+        "metric",
+        "relation"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "relation": {
+                "enum": [
+                  "unchanged",
+                  "increased"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "value"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "artifact": {
+      "const": "neutral-controller-regression"
+    },
+    "source_document": {
+      "const": "reports/ARCH_MEMO_CONTROL_SURFACE_2026-11-14.md#20.2"
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^T(0[1-9]|[12][0-9]|30)$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "requires_features": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "absolute_input",
+                "relative_input",
+                "motor",
+                "hardware_context",
+                "global_context_motion",
+                "display_style",
+                "preset_transaction",
+                "hardware_restore",
+                "independent_io_addresses"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 9,
+            "uniqueItems": true
+          },
+          "setup": {
+            "type": "object",
+            "properties": {
+              "instances": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "device_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "source": {
+                      "enum": [
+                        "hardware",
+                        "simulation"
+                      ]
+                    },
+                    "route_generation": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "hardware_context": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "device_id",
+                    "source",
+                    "route_generation",
+                    "hardware_context"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 8
+              },
+              "controls": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "kind": {
+                      "enum": [
+                        "absolute",
+                        "relative",
+                        "button",
+                        "meter",
+                        "fader"
+                      ]
+                    },
+                    "input_endpoint": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "feedback_endpoint": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "touch_endpoint": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "input_endpoint",
+                    "feedback_endpoint",
+                    "touch_endpoint"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 64
+              },
+              "parameters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "minimum": {
+                      "type": "number"
+                    },
+                    "maximum": {
+                      "type": "number"
+                    },
+                    "initial": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "minimum",
+                    "maximum",
+                    "initial"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 64
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "bindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "element_id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                          },
+                          "kind": {
+                            "enum": [
+                              "parameter",
+                              "action"
+                            ]
+                          },
+                          "target_id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                          }
+                        },
+                        "required": [
+                          "element_id",
+                          "kind",
+                          "target_id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "bindings"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 16
+              },
+              "hardware_contexts": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                },
+                "minItems": 1,
+                "maxItems": 16,
+                "uniqueItems": true
+              },
+              "permissions": {
+                "type": "object",
+                "properties": {
+                  "display": {
+                    "type": "boolean"
+                  },
+                  "motor": {
+                    "type": "boolean"
+                  },
+                  "manage": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "display",
+                  "motor",
+                  "manage"
+                ],
+                "additionalProperties": false
+              },
+              "journal_capacity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65536
+              }
+            },
+            "required": [
+              "instances",
+              "controls",
+              "parameters",
+              "pages",
+              "hardware_contexts",
+              "permissions",
+              "journal_capacity"
+            ],
+            "additionalProperties": false
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "advance_time"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "monotonic_delta_s": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 3600
+                        },
+                        "wall_delta_s": {
+                          "type": "number",
+                          "minimum": -1000000000.0,
+                          "maximum": 1000000000.0
+                        }
+                      },
+                      "required": [
+                        "monotonic_delta_s",
+                        "wall_delta_s"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "attach_endpoint"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "endpoint_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "provenance": {
+                          "enum": [
+                            "remote_virtual",
+                            "physical_usb"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "endpoint_id",
+                        "name",
+                        "provenance"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "authority_reply"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "parameter_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "accepted": {
+                          "type": "boolean"
+                        },
+                        "actual_value": {
+                          "type": "number"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        }
+                      },
+                      "required": [
+                        "parameter_id",
+                        "accepted",
+                        "actual_value",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "configure_permissions"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "display": {
+                          "type": "boolean"
+                        },
+                        "motor": {
+                          "type": "boolean"
+                        },
+                        "manage": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "display",
+                        "motor",
+                        "manage"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "disconnect"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "flush"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "transport_result": {
+                          "enum": [
+                            "accepted",
+                            "rejected",
+                            "failed"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "transport_result"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "inspect"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "lose_touch_continuity"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "scope": {
+                          "enum": [
+                            "all_motor_controls"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "scope"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "overflow_journal"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65536
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "prepare_display"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "prepare_motor"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "preset_transaction"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "verb": {
+                          "enum": [
+                            "begin",
+                            "cancel",
+                            "reply"
+                          ]
+                        },
+                        "transaction_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        }
+                      },
+                      "required": [
+                        "verb",
+                        "transaction_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "publish_display"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "style": {
+                          "enum": [
+                            "unchanged",
+                            "single",
+                            "alternate"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value",
+                        "style"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "receive_batch"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "element_id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                              },
+                              "state": {
+                                "enum": [
+                                  "touched",
+                                  "released",
+                                  "unknown"
+                                ]
+                              },
+                              "context": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                              }
+                            },
+                            "required": [
+                              "element_id",
+                              "state",
+                              "context"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 2,
+                          "maxItems": 128
+                        }
+                      },
+                      "required": [
+                        "events"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "receive_input"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "context": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value",
+                        "context"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "receive_motor_echo"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "receive_repeated"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65536
+                        },
+                        "context": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value",
+                        "count",
+                        "context"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "receive_unconfigured"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "reconnect"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "route_generation": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "same_endpoint_id": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "route_generation",
+                        "same_endpoint_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "remote_input"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "claimed_origin": {
+                          "enum": [
+                            "hardware",
+                            "remote"
+                          ]
+                        },
+                        "drop_response": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value",
+                        "claimed_origin",
+                        "drop_response"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "replace_route"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "route_generation": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "same_endpoint_id": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "route_generation",
+                        "same_endpoint_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "save_restore"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "verb": {
+                          "enum": [
+                            "save",
+                            "restart",
+                            "restore",
+                            "undo"
+                          ]
+                        },
+                        "device_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "profile_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        }
+                      },
+                      "required": [
+                        "verb",
+                        "device_id",
+                        "profile_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "select_hardware_context"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "context": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "intent": {
+                          "enum": [
+                            "display_initialization",
+                            "explicit_local"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "context",
+                        "intent"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "select_software_page"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        }
+                      },
+                      "required": [
+                        "page"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "simulation_feedback"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "simulation_reset"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "touch"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "state": {
+                          "enum": [
+                            "touched",
+                            "released",
+                            "unknown"
+                          ]
+                        },
+                        "context": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "state",
+                        "context"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "turn_absolute"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "element_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "delta": {
+                          "type": "integer",
+                          "minimum": -127,
+                          "maximum": 127
+                        }
+                      },
+                      "required": [
+                        "element_id",
+                        "delta"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "const": "write_parameter"
+                    },
+                    "instance_id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                    },
+                    "requires_features": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "absolute_input",
+                          "relative_input",
+                          "motor",
+                          "hardware_context",
+                          "global_context_motion",
+                          "display_style",
+                          "preset_transaction",
+                          "hardware_restore",
+                          "independent_io_addresses"
+                        ]
+                      },
+                      "minItems": 0,
+                      "maxItems": 9,
+                      "uniqueItems": true
+                    },
+                    "arguments": {
+                      "type": "object",
+                      "properties": {
+                        "parameter_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$"
+                        },
+                        "value": {
+                          "type": [
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "origin": {
+                          "enum": [
+                            "gui",
+                            "remote",
+                            "agent"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "parameter_id",
+                        "value",
+                        "origin"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expect": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/expectation"
+                      },
+                      "minItems": 0,
+                      "maxItems": 64
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "instance_id",
+                    "requires_features",
+                    "arguments",
+                    "expect"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 128
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "requires_features",
+          "setup",
+          "steps"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 30,
+      "maxItems": 30
+    }
+  },
+  "required": [
+    "schema_version",
+    "artifact",
+    "source_document",
+    "scenarios"
+  ],
+  "additionalProperties": false
+}
