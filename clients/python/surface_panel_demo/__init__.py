@@ -160,6 +160,9 @@ def run(client, mapping, *, source=None, hz=1, duration=15, max_age=1, clock=tim
         # Record the attempt first: a lost response can still have changed the display.
         key = (item["control_id"], item["kind"])
         written[key] = item
+        # An earlier acknowledgement cannot describe the result of this new attempt.
+        # In particular, an old acknowledged rest must not hide a lost non-rest reply.
+        previous.pop(key, None)
         reply = client.feedback(key[0], key[1], value, sequenced=False)
         if reply["disposition"] == "accepted":
             result["accepted"] += 1

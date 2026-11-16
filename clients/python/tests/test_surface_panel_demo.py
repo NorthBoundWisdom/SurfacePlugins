@@ -124,6 +124,31 @@ class PanelDemoTests(unittest.TestCase):
             self.assertEqual(result["cleanup_failed"], 0)
             self.assertEqual([(r["control_id"], r["value"]) for r in host.records], [("axis", 63), ("axis", 0)])
 
+    def test_lost_nonrest_after_acknowledged_rest_invalidates_old_rest_cache(self):
+        with TestOnlyHardwareHost(TOKEN) as host:
+            class Source:
+                calls = 0
+                def sample(self, now):
+                    self.calls += 1
+                    return {"published_at": now, "values": {"speed": -1 if self.calls == 1 else 1, "fresh": True}}
+            class LostNonRest(DisplayClient):
+                lost = False
+                def call(self, name, arguments=None):
+                    result = super().call(name, arguments)
+                    if name == "surface_control_feedback" and arguments["control_id"] == "axis" and arguments["value"] == 127 and not self.lost:
+                        self.lost = True
+                        raise SurfaceError("transport_unknown")
+                    return result
+            client = LostNonRest(host.url, TOKEN, host.instance_id, accepted_sources=("hardware",))
+            clock = Clock()
+            result = run(client, mapping(host.profile), source=Source(), hz=10, duration=0.4, clock=clock, sleep=clock.sleep)
+            self.assertEqual(result["reason"], "display_unknown")
+            self.assertEqual(result["cleanup_failed"], 0)
+            self.assertEqual([(r["control_id"], r["value"]) for r in host.records],
+                             [("axis", 0), ("button", "on"), ("axis", 127), ("button", "off"), ("axis", 0)])
+            self.assertEqual(host.requests.count("surface_control_discover"), 1)
+            self.assert_rest(host)
+
     def test_interruption_or_staleness_during_a_frame_cleans_before_freshness_is_lit(self):
         for interrupt in (False, True):
             with self.subTest(interrupt=interrupt), TestOnlyHardwareHost(TOKEN) as host:
