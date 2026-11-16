@@ -1,4 +1,4 @@
-"""SDK 1.3.0 against explicitly versioned host behaviors; no version rewriting."""
+"""SDK against explicitly versioned 1.0–1.3 host behaviors; no version rewriting."""
 from test_surface_control import QFixture
 from surface_control import EventCursor, SurfaceError
 import unittest

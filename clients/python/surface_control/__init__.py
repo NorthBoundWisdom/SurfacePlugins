@@ -1,4 +1,4 @@
-"""Optional Surface Control client for contracts 1.0, 1.1, 1.2, 1.3 and explicit hardware 1.4. Standard library only; no command retries.
+"""Optional Surface Control client for contracts 1.0–1.5, with explicit hardware source acceptance. Standard library only; no command retries.
 
 This is the single shared SDK source (SurfacePlugins `clients/python`). Hosts copy it from their
 managed dependency into their delivery; they do not keep their own copy. It is separate from any
@@ -17,8 +17,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-__version__ = "1.4.0"
-CONTRACT_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4")
+__version__ = "1.5.0"
+CONTRACT_VERSIONS = ("1.0", "1.1", "1.2", "1.3", "1.4", "1.5")
 PROTOCOL = "2025-11-25"
 PROTOCOLS = ("2025-11-25", "2026-07-28")
 MAX_BYTES = 8 * 1024 * 1024
@@ -161,7 +161,7 @@ def validate_hardware_profile(profile):
     capabilities = profile.get("capabilities", [])
     registered = {"hardware", "simulation", "controls.stable_ids", "controls.layered", "controls.input_declared",
                   "input.absolute", "input.relative", "input.button", "input.hold", "feedback.value", "feedback.indicator",
-                  "feedback.unsequenced", "input.independent_sequence", "events.writer_id", "writes.independent_limits"}
+                  "feedback.unsequenced", "input.independent_sequence", "events.writer_id", "writes.independent_limits", "events.input_retention", "session.owned_virtual_rehearsal"}
     valid_id = lambda text: isinstance(text, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", text) is not None
     require(valid_id(profile.get("id")) and isinstance(profile.get("version"), str)
             and 0 < len(profile["version"].encode()) <= 64, "invalid_profile")
@@ -170,6 +170,7 @@ def validate_hardware_profile(profile):
             and "input.hold" not in capabilities, "invalid_profile")
     require(all(valid_id(item) and (item in registered or (item.startswith("x.") and len(item.split(".")) >= 3
                 and all(item.split(".")))) for item in capabilities), "invalid_profile")
+    require("events.input_retention" not in capabilities or "input.independent_sequence" in capabilities, "invalid_profile")
     controls = profile["controls"]
     require(0 < len(controls) <= 4096 and all(isinstance(row, dict) for row in controls), "invalid_profile")
     ids = set()
@@ -247,6 +248,7 @@ class Client:
                 and set(accepted_sources) <= {"simulation", "hardware"}, "invalid_source_allowlist")
         self.accepted_sources = tuple(accepted_sources)
         self.source = "simulation"
+        self.owned_virtual_rehearsal = False
         self.link = None
         self.url, self.token, self.instance_id, self.timeout = url, token, instance_id, timeout
         self.provider_id, self.provider_header = provider_id, provider_header
@@ -375,7 +377,7 @@ class Client:
             value.get("schema_version") == 1
             and value.get("contract_version") in versions
             and value.get("source") in getattr(self, "accepted_sources", ("simulation",))
-            and ((value.get("source") == "hardware" and value.get("contract_version") == "1.4")
+            and ((value.get("source") == "hardware" and value.get("contract_version") in ("1.4", "1.5"))
                  or (value.get("source") == "simulation" and value.get("contract_version") != "1.4")),
             "unsupported_contract",
         )
@@ -400,15 +402,20 @@ class Client:
             and all(isinstance(item, str) and item for item in profile.get("capabilities", [])),
             "unsupported_profile",
         )
-        if value["contract_version"] in ("1.1", "1.2", "1.3", "1.4"):
+        if value["contract_version"] in ("1.1", "1.2", "1.3", "1.4", "1.5"):
             require(mapping_revision(profile) == expected["mapping_revision"], "invalid_identity")
         validate_input_declarations(profile)
         if value["source"] == "hardware":
             validate_hardware_profile(profile)
         else:
             require("hardware" not in profile.get("capabilities", []), "invalid_profile")
-        if value["contract_version"] not in ("1.3", "1.4"):
-            require(not {"input.independent_sequence", "events.writer_id", "writes.independent_limits"}.intersection(profile.get("capabilities", [])), "unsupported_contract")
+        if value["contract_version"] not in ("1.3", "1.4", "1.5"):
+            require(not {"input.independent_sequence", "events.writer_id", "writes.independent_limits", "events.input_retention", "session.owned_virtual_rehearsal"}.intersection(profile.get("capabilities", [])), "unsupported_contract")
+        retained = "events.input_retention" in profile.get("capabilities", [])
+        require(not retained or (value["contract_version"] == "1.5" and "input.independent_sequence" in profile.get("capabilities", [])), "unsupported_contract")
+        rehearsal = "session.owned_virtual_rehearsal" in profile.get("capabilities", [])
+        require(not rehearsal or value["contract_version"] == "1.5" and value["source"] == "hardware", "unsupported_contract")
+        require(value["contract_version"] != "1.5" or retained or rehearsal, "unsupported_contract")
         latest = cursor(value.get("latest_sequence"))
         require(self.latest_sequence is None or latest >= cursor(self.latest_sequence), "sequence_rollback")
         if self.expected is not None:
@@ -420,6 +427,7 @@ class Client:
         self.latest_input_sequence = latest_input
         self.contract_version, self.profile = value["contract_version"], profile
         self.source = value["source"]
+        self.owned_virtual_rehearsal = rehearsal
         return value
 
     def _read_input_sequence(self, value, *, key="latest_input_sequence", global_key="latest_sequence", profile=None):
@@ -474,7 +482,7 @@ class Client:
         self._observe_time(value["server_time"])
         require(isinstance(value.get("inputs"), dict) and isinstance(value.get("feedback"), dict), "invalid_snapshot")
         if getattr(self, "source", "simulation") == "hardware":
-            require(value["discovery"].get("contract_version") == "1.4" and value["discovery"].get("profile") == self.profile, "invalid_snapshot")
+            require(value["discovery"].get("contract_version") in ("1.4", "1.5") and value["discovery"].get("profile") == self.profile, "invalid_snapshot")
             for ident, item in value["inputs"].items():
                 require(admits(self.control(ident), item), "invalid_snapshot")
         holds = value.get("holds", {})
@@ -539,7 +547,7 @@ class Client:
                 and value.get("latest_sequence") == "0",
                 "invalid_response",
             )
-            if value.get("contract_version") in ("1.1", "1.2", "1.3"):
+            if value.get("contract_version") in ("1.1", "1.2", "1.3", "1.5"):
                 require(mapping_revision(value.get("profile")) == value["expected"].get("mapping_revision"), "invalid_identity")
             next_profile = value.get("profile", self.profile)
             next_input = self._read_input_sequence(value, profile=next_profile)
@@ -582,7 +590,7 @@ class Client:
         require(getattr(self, "source", "simulation") != "hardware", "permission_denied")
         extra = None
         if hold_s is not None:
-            require(finite(hold_s) and hold_s > 0 and self.contract_version in ("1.1", "1.2", "1.3"), "unsupported_hold")
+            require(finite(hold_s) and hold_s > 0 and self.contract_version in ("1.1", "1.2", "1.3", "1.5"), "unsupported_hold")
             extra = {"hold_s": hold_s}
         require(cas in ("auto", "global", "input"), "invalid_argument")
         supported = self.profile is not None and "input.independent_sequence" in self.profile.get("capabilities", [])
@@ -612,7 +620,7 @@ class Client:
         `hold_expired` means the lease is gone: the host restored the rest value. Prepare a new input.
         """
         require(getattr(self, "source", "simulation") != "hardware", "unsupported_hold")
-        require(self.expected is not None and self.contract_version in ("1.1", "1.2", "1.3"), "unsupported_hold")
+        require(self.expected is not None and self.contract_version in ("1.1", "1.2", "1.3", "1.5"), "unsupported_hold")
         require(finite(hold_s) and hold_s > 0, "invalid_argument")
         value = self.call(
             "surface_control_renew", {"expected": self.expected, "control_id": control_id, "hold_s": hold_s}
@@ -771,6 +779,106 @@ class EventCursor:
     def fresh(self, entry, now=None):
         now = self.clock() if now is None else now
         return finite(now) and entry["age_s"] >= 0 and entry["received_monotonic"] <= now <= entry["expires_monotonic"]
+
+
+class InputEventCursor(EventCursor):
+    """Explicit input-only retention cursor; never silently falls back to the global FIFO.
+
+    Global sequence may skip feedback, while input_sequence must remain contiguous. CAS
+    highwaters and historical pagination positions are separate. A failed page commits none
+    of its entries/highwaters and permanently invalidates this cursor.
+    """
+    def __init__(self, client, *, clock=time.monotonic, max_age=2, limit=1024):
+        require(client.profile is not None and client.contract_version == "1.5"
+                and {"events.input_retention", "input.independent_sequence"}.issubset(client.profile.get("capabilities", [])),
+                "unsupported_input_retention")
+        super().__init__(client, clock=clock, max_age=max_age, limit=limit)
+        self.input_event_capacity = None
+
+    def bootstrap(self, snapshot):
+        try:
+            require(isinstance(snapshot, dict) and isinstance(snapshot.get("discovery"), dict)
+                    and snapshot["discovery"].get("profile") == self.client.profile
+                    and snapshot["discovery"].get("contract_version") == "1.5"
+                    and snapshot["discovery"].get("source") == self.client.source, "context_changed")
+            super().bootstrap(snapshot)
+        except Exception:
+            self.invalidated = True
+            raise
+
+    def _poll(self):
+        client, expected = self.client, self.expected
+        require(client.expected == expected, "context_changed")
+        require(client.contract_version == "1.5" and "events.input_retention" in client.profile.get("capabilities", []), "unsupported_input_retention")
+        started = self.tick()
+        page = client.call("surface_control_input_events", {
+            "expected": dict(expected), "after_input_sequence": str(self.input_sequence), "limit": self.limit,
+        })
+        received = self.tick()
+        require(client.expected == expected, "context_changed")
+        require(received - started <= self.max_age, "input_stale")
+        keys = {"expected", "server_time", "latest_sequence", "latest_input_sequence", "input_event_capacity", "events"}
+        hardware = client.source == "hardware"
+        require(isinstance(page, dict) and keys.issubset(page) and set(page) <= keys | {"holds"} | ({"link"} if hardware else set()), "invalid_events")
+        require(page["expected"] == expected and finite(page["server_time"]), "context_changed")
+        if hardware:
+            require(page.get("link") == {"state": "connected"}, "link_disconnected")
+            require(not page.get("holds"), "invalid_link")
+        require(client.server_time is None or page["server_time"] >= client.server_time, "time_rollback")
+        latest, latest_input = cursor(page["latest_sequence"]), cursor(page["latest_input_sequence"])
+        require(latest_input <= latest and latest >= cursor(client.latest_sequence)
+                and latest_input >= cursor(client.latest_input_sequence), "sequence_rollback")
+        capacity = page["input_event_capacity"]
+        require(type(capacity) is int and 1 <= capacity <= 65536
+                and self.input_event_capacity in (None, capacity), "invalid_events")
+        events = page["events"]
+        require(isinstance(events, list) and len(events) <= self.limit, "invalid_events")
+        input_position, global_position, last_time = self.input_sequence, self.sequence, self.last_event_time
+        require(latest_input >= input_position and len(events) == min(self.limit, latest_input - input_position), "input_event_gap")
+        entries = []
+        event_keys = {"expected", "sequence", "input_sequence", "time", "source", "origin", "kind", "control_id", "encoding", "value", "disposition"}
+        for event in events:
+            require(isinstance(event, dict) and event_keys.issubset(event)
+                    and set(event) <= event_keys | {"writer_id", "mapped_value", "reason", "hold_deadline"}, "invalid_event")
+            require(event["expected"] == expected and event["source"] == client.source and event["kind"] == "input", "invalid_event")
+            position, global_event = cursor(event["input_sequence"]), cursor(event["sequence"])
+            require(position == input_position + 1 and global_position < global_event <= latest and position <= global_event, "input_event_gap")
+            require(isinstance(event["origin"], str) and event["origin"] in ({"hardware"} if hardware else {"interface", "remote"})
+                    and isinstance(event["disposition"], str) and event["disposition"] in {"accepted", "ignored"}
+                    and finite(event["time"]) and event["time"] <= page["server_time"]
+                    and (last_time is None or event["time"] >= last_time), "invalid_event")
+            row = client.control(event["control_id"])
+            require(event["encoding"] == row["encoding"] and admits(row, event["value"]), "invalid_event")
+            reason = event.get("reason")
+            require(reason is None or isinstance(reason, str) and 0 < len(reason) <= 128, "invalid_event")
+            require(event["disposition"] != "ignored" or reason is not None, "invalid_event")
+            if "mapped_value" in event:
+                mapped = event["mapped_value"]
+                require(finite(mapped) or type(mapped) is bool or isinstance(mapped, str) and bool(mapped), "invalid_event")
+            deadline = event.get("hold_deadline")
+            require(deadline is None or not hardware and event["disposition"] == "accepted"
+                    and "hold" in row and finite(deadline) and deadline > event["time"], "invalid_event")
+            client._validate_writer(event)
+            age = page["server_time"] - event["time"]
+            entries.append({"event": event, "age_s": age, "received_monotonic": received,
+                            "expires_monotonic": started + self.max_age - age})
+            input_position, global_position, last_time = position, global_event, event["time"]
+        holds = page.get("holds", {})
+        require(isinstance(holds, dict), "invalid_events")
+        for ident, deadline in holds.items():
+            row = client.control(ident)
+            require("hold" in row and finite(deadline) and deadline > page["server_time"], "invalid_events")
+        # Commit only after validating the complete page. Advancing read-time CAS highwaters
+        # never skips unread historical inputs: the cursor retains the last actual event.
+        self.input_sequence, self.sequence, self.last_event_time = input_position, global_position, last_time
+        self.input_event_capacity = capacity
+        self.holds, self.holds_server_time = dict(holds), page["server_time"]
+        self.holds_request_started_monotonic, self.holds_received_monotonic = started, received
+        client.latest_sequence, client.latest_input_sequence = str(latest), str(latest_input)
+        client._observe_time(page["server_time"])
+        if hardware:
+            client.link = dict(page["link"])
+        return entries
 
 
 class BinaryRoleCursor:
@@ -935,6 +1043,7 @@ __all__ = [
     "Client",
     "CommandCursor",
     "EventCursor",
+    "InputEventCursor",
     "SurfaceError",
     "admits",
     "accepts_input",

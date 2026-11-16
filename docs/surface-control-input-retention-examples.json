@@ -1,0 +1,230 @@
+[
+  {
+    "arguments" : {
+      "after_input_sequence" : "0",
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+
+      ],
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "0",
+      "latest_sequence" : "0",
+      "server_time" : 0
+    },
+    "tool" : "surface_control_input_events"
+  },
+  {
+    "arguments" : {
+      "after_input_sequence" : "0",
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "limit" : 1
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "button",
+          "disposition" : "accepted",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "initial",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "d7291a4e96e8aba4",
+            "profile_id" : "example.retained.simulation",
+            "profile_version" : "1.5"
+          },
+          "hold_deadline" : 1,
+          "input_sequence" : "1",
+          "kind" : "input",
+          "origin" : "remote",
+          "sequence" : "1",
+          "source" : "simulation",
+          "time" : 0,
+          "value" : true,
+          "writer_id" : "operator"
+        }
+      ],
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "holds" : {
+        "button" : 1
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "2",
+      "latest_sequence" : "6",
+      "server_time" : 0
+    },
+    "tool" : "surface_control_input_events"
+  },
+  {
+    "arguments" : {
+      "after_input_sequence" : "1",
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "button",
+          "disposition" : "ignored",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "initial",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "d7291a4e96e8aba4",
+            "profile_id" : "example.retained.simulation",
+            "profile_version" : "1.5"
+          },
+          "input_sequence" : "2",
+          "kind" : "input",
+          "origin" : "interface",
+          "reason" : "no_change",
+          "sequence" : "2",
+          "source" : "simulation",
+          "time" : 0,
+          "value" : true,
+          "writer_id" : "interface"
+        }
+      ],
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "holds" : {
+        "button" : 1
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "2",
+      "latest_sequence" : "6",
+      "server_time" : 0
+    },
+    "tool" : "surface_control_input_events"
+  },
+  {
+    "arguments" : {
+      "after_input_sequence" : "0",
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "button",
+          "disposition" : "accepted",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "initial",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "d7291a4e96e8aba4",
+            "profile_id" : "example.retained.simulation",
+            "profile_version" : "1.5"
+          },
+          "hold_deadline" : 1,
+          "input_sequence" : "1",
+          "kind" : "input",
+          "origin" : "remote",
+          "sequence" : "1",
+          "source" : "simulation",
+          "time" : 0,
+          "value" : true,
+          "writer_id" : "operator"
+        },
+        {
+          "control_id" : "button",
+          "disposition" : "ignored",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "initial",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "d7291a4e96e8aba4",
+            "profile_id" : "example.retained.simulation",
+            "profile_version" : "1.5"
+          },
+          "input_sequence" : "2",
+          "kind" : "input",
+          "origin" : "interface",
+          "reason" : "no_change",
+          "sequence" : "2",
+          "source" : "simulation",
+          "time" : 0,
+          "value" : true,
+          "writer_id" : "interface"
+        },
+        {
+          "control_id" : "button",
+          "disposition" : "accepted",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "initial",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "d7291a4e96e8aba4",
+            "profile_id" : "example.retained.simulation",
+            "profile_version" : "1.5"
+          },
+          "input_sequence" : "3",
+          "kind" : "input",
+          "origin" : "remote",
+          "reason" : "hold_expired",
+          "sequence" : "7",
+          "source" : "simulation",
+          "time" : 1,
+          "value" : false,
+          "writer_id" : "system"
+        }
+      ],
+      "expected" : {
+        "epoch" : "initial",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "d7291a4e96e8aba4",
+        "profile_id" : "example.retained.simulation",
+        "profile_version" : "1.5"
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "3",
+      "latest_sequence" : "7",
+      "server_time" : 1
+    },
+    "tool" : "surface_control_input_events"
+  }
+]

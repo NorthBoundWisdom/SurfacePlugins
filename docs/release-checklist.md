@@ -65,3 +65,12 @@ identifiers; see [version rules](versioning.md) and [change history](../CHANGELO
   verified delivery attachments. Download and hash the published assets to confirm identity.
 - [ ] Record release URLs, tag targets, asset hashes and authorized consumer pin updates in
   delivery records. Do not silently rewrite a consumer repository or its fixed version.
+
+
+For an explicit1.5 profile, also run the input-retention schema/example checks and source
+fences in `test_input_retention.py`, preserve the default1.3/1.4 descriptors and four frozen
+software fixtures byte for byte, and keep the SDK1.4 source/version assertion as test-only
+inputs. Package `surface-control-diagnostic-capture-v1.5.schema.json` with SDK1.5, retaining
+old delivered schemas/archives untouched. Rehearsal capture/report markers and physical
+qualification=false must survive offline verification. Host adoption must separately verify
+optional tool catalog increments and owned-virtual endpoint restrictions before delivery.

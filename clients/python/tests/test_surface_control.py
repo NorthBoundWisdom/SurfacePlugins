@@ -162,9 +162,6 @@ class MappingRevisionTests(unittest.TestCase):
 
 
 class ClientTests(unittest.TestCase):
-    def test_version(self):
-        self.assertEqual(__version__, "1.4.0")
-
     def test_profile_allowlist_is_caller_owned(self):
         client = Fixture()
         client.discover()  # None accepts any well-formed profile

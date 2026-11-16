@@ -1,0 +1,140 @@
+[
+  {
+    "arguments" : {
+      "after_input_sequence" : "0",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "c45d4da0ba134f91",
+        "profile_id" : "example.retained.hardware",
+        "profile_version" : "1.5"
+      },
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+
+      ],
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "c45d4da0ba134f91",
+        "profile_id" : "example.retained.hardware",
+        "profile_version" : "1.5"
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "0",
+      "latest_sequence" : "0",
+      "link" : {
+        "state" : "connected"
+      },
+      "server_time" : 0
+    },
+    "tool" : "surface_control_input_events"
+  },
+  {
+    "arguments" : {
+      "after_input_sequence" : "0",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "c45d4da0ba134f91",
+        "profile_id" : "example.retained.hardware",
+        "profile_version" : "1.5"
+      },
+      "limit" : 1
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "button",
+          "disposition" : "accepted",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "connected",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "c45d4da0ba134f91",
+            "profile_id" : "example.retained.hardware",
+            "profile_version" : "1.5"
+          },
+          "input_sequence" : "1",
+          "kind" : "input",
+          "origin" : "hardware",
+          "sequence" : "1",
+          "source" : "hardware",
+          "time" : 0,
+          "value" : true,
+          "writer_id" : "device"
+        }
+      ],
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "c45d4da0ba134f91",
+        "profile_id" : "example.retained.hardware",
+        "profile_version" : "1.5"
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "2",
+      "latest_sequence" : "6",
+      "link" : {
+        "state" : "connected"
+      },
+      "server_time" : 0
+    },
+    "tool" : "surface_control_input_events"
+  },
+  {
+    "arguments" : {
+      "after_input_sequence" : "1",
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "c45d4da0ba134f91",
+        "profile_id" : "example.retained.hardware",
+        "profile_version" : "1.5"
+      },
+      "limit" : 128
+    },
+    "result" : {
+      "events" : [
+        {
+          "control_id" : "button",
+          "disposition" : "ignored",
+          "encoding" : "boolean",
+          "expected" : {
+            "epoch" : "connected",
+            "instance_id" : "example-instance",
+            "mapping_revision" : "c45d4da0ba134f91",
+            "profile_id" : "example.retained.hardware",
+            "profile_version" : "1.5"
+          },
+          "input_sequence" : "2",
+          "kind" : "input",
+          "origin" : "hardware",
+          "reason" : "no_change",
+          "sequence" : "2",
+          "source" : "hardware",
+          "time" : 0,
+          "value" : true,
+          "writer_id" : "device"
+        }
+      ],
+      "expected" : {
+        "epoch" : "connected",
+        "instance_id" : "example-instance",
+        "mapping_revision" : "c45d4da0ba134f91",
+        "profile_id" : "example.retained.hardware",
+        "profile_version" : "1.5"
+      },
+      "input_event_capacity" : 4,
+      "latest_input_sequence" : "2",
+      "latest_sequence" : "6",
+      "link" : {
+        "state" : "connected"
+      },
+      "server_time" : 0
+    },
+    "tool" : "surface_control_input_events"
+  }
+]

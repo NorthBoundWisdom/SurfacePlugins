@@ -81,7 +81,7 @@ public enum ControlCapability {
         "simulation", "hardware", "controls.stable_ids", "controls.layered", "input.absolute", "input.relative",
         "input.button", "input.hold", "feedback.value", "feedback.indicator",
         "feedback.unsequenced", "controls.input_declared", "input.independent_sequence",
-        "events.writer_id", "writes.independent_limits"
+        "events.writer_id", "writes.independent_limits", "events.input_retention", "session.owned_virtual_rehearsal"
     ]
     /// `x.<host>.<name>`: three or more nonempty dot-separated components starting with `x`.
     public static func isHostPrivate(_ value: String) -> Bool {
@@ -131,6 +131,12 @@ public struct ControlProfile: Equatable, Codable, Sendable {
             throw ControlContractError("invalid_profile")
         }
         guard controls.allSatisfy({ ($0.accepts_input != nil) == declared.contains("controls.input_declared") }) else {
+            throw ControlContractError("invalid_profile")
+        }
+        guard !declared.contains("events.input_retention") || declared.contains("input.independent_sequence") else {
+            throw ControlContractError("invalid_profile")
+        }
+        guard !declared.contains("session.owned_virtual_rehearsal") || declared.contains("hardware") else {
             throw ControlContractError("invalid_profile")
         }
         if declared.contains("hardware") {
@@ -305,7 +311,7 @@ public struct ControlDiscovery: Equatable, Codable, Sendable {
     public let write_limits: ControlWriteLimits?
     public init(expected: ControlExpected, profile: ControlProfile, latestSequence: String, latestInputSequence: String? = nil, writeLimits: ControlWriteLimits? = nil, source: PluginSource = .simulation) {
         latest_sequence = latestSequence; latest_input_sequence = latestInputSequence; write_limits = writeLimits
-        schema_version = 1; contract_version = source == .hardware ? "1.4" : Self.contractVersion; self.source = source; self.expected = expected; self.profile = profile
+        schema_version = 1; contract_version = !Set(profile.capabilities).isDisjoint(with: ["events.input_retention", "session.owned_virtual_rehearsal"]) ? "1.5" : (source == .hardware ? "1.4" : Self.contractVersion); self.source = source; self.expected = expected; self.profile = profile
     }
 }
 

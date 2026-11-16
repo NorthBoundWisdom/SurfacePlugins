@@ -8,9 +8,9 @@ compatibility guarantee beyond those documents.
 
 | Identifier | Meaning and owner | When it changes |
 | --- | --- | --- |
-| `contract_version` | Wire behavior, declared by the shared contract; currently simulation `1.3` or hardware `1.4`. Hosts adopt the shared revision explicitly. | Optional, capability-discovered additions use a new minor. Required identity or input interpretation changes require a new major. |
+| `contract_version` | Wire behavior, declared by the shared contract; currently default simulation `1.3`, default hardware `1.4`, or explicit capability mode `1.5`. Hosts adopt the shared revision explicitly. | Optional, capability-discovered additions use a new minor. Required identity or input interpretation changes require a new major. |
 | `schema_version` | The schema/envelope convention of the document carrying it, owned by that document's specification. Discovery and protocol scenario schemas remain `1`. | It is independent of contract minor versions: additive 1.1–1.3 changes did not change it. A manifest, scenario, role map, or report's schema number must be interpreted in its own context. |
-| SDK version | Python client implementation version, owned by this package; currently `1.4.0`. | Changes to the SDK are versioned separately from a host profile. SDK 1.3.0 explicitly supports contract 1.0/1.1/1.2/1.3; this is an allowlist, not permission to accept unknown future versions. |
+| SDK version | Python client implementation version, owned by this package; currently `1.5.0`. | Changes to the SDK are versioned separately from a host profile. SDK 1.3.0 explicitly supports contract 1.0/1.1/1.2/1.3; this is an allowlist, not permission to accept unknown future versions. |
 | Profile `id` / `version` | Host-owned declaration of a concrete layout and interpretation. | Hosts deliberately version their profiles when adopting interpretation/capability changes. The 1.3 adoption explicitly updates profile versions and capability allowlists. There is no universal profile shared by all hosts. |
 | `mapping_revision` | Content-derived 16-hex FNV-1a mapping digest, computed by the shared algorithm and verified by SDK 1.1+. | Mapping-relevant control fields change it. Profile ID/version, capabilities, and control order do not. A changed context still rotates epoch even if its mapping hash stays the same. |
 | Instance / epoch | Host-issued runtime identity fences, not release versions. | Restart changes instance identity. Source, mapping, configuration, mode, or binding interpretation changes rotate epoch. Reset also changes epoch and clears counters/history. |
@@ -73,3 +73,20 @@ The workspace compatibility ruling is:
 
 This ruling does not permit changing an existing tool's behavior, hiding a changed descriptor
 behind the same name, or changing any already published attachment.
+
+## Explicit contract 1.5 / SDK 1.5.0
+
+Only profiles explicitly enabling `events.input_retention` and/or hardware-only
+`session.owned_virtual_rehearsal` declare 1.5. Default discovery, tools and behavior stay
+simulation1.3/hardware1.4. Schema1 and mapping content rules remain unchanged. Hosts explicitly
+adopt a profile version and new epoch; an old client can reject1.5 without changing old requests.
+
+| SDK | Simulation contracts | Hardware contracts |
+| --- | --- | --- |
+| 1.5.0 | 1.0, 1.1, 1.2, 1.3, explicit 1.5 | 1.4, explicit 1.5; both require hardware source opt-in |
+
+`InputEventCursor` is explicit and capability-gated; it does not replace `EventCursor` or relax
+`BinaryRoleCursor`. SDK1.4's complete source and original version assertion are retained as
+test-only fixtures, excluded from runtime SDK archives. New1.5 tests supplement the unchanged
+old version behavior matrix and hardware tests. Old published SDK ZIPs/tags/fixtures/attachments
+are never rewritten to advertise support for1.5. A main commit is not a tag or release.

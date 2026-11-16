@@ -34,6 +34,7 @@ jobs:
       - run: python3 -m venv build/schema-validation && build/schema-validation/bin/python -m pip install jsonschema
       - run: build/schema-validation/bin/python scripts/validate_surface_control_schemas.py --examples build/surface-control-examples.json
       - run: build/schema-validation/bin/python -B scripts/validate_surface_conformance_reports.py
+      - run: build/schema-validation/bin/python -B scripts/validate_surface_input_retention.py
       - run: python3 configs/check_boundaries.py
       - name: Save the SwiftPM build for the next push
         if: success() && github.event_name == 'push'
@@ -81,6 +82,7 @@ jobs:
       - run: python3 -m venv build/schema-validation && build/schema-validation/bin/python -m pip install jsonschema
       - run: build/schema-validation/bin/python scripts/validate_surface_control_schemas.py --examples build/surface-control-examples.json
       - run: build/schema-validation/bin/python -B scripts/validate_surface_conformance_reports.py
+      - run: build/schema-validation/bin/python -B scripts/validate_surface_input_retention.py
       - run: python3 configs/check_boundaries.py
       - name: Save the SwiftPM build for the next push
         if: success() && github.event_name == 'push'

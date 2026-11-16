@@ -11,6 +11,9 @@ public struct SurfaceControlSession: Sendable {
     var sequence: UInt64 = 0
     var inputSequence: UInt64 = 0
     public let writeLimits: ControlWriteLimits?
+    /// Optional bounded history of input events, never a second authority for parameter values.
+    public let inputEventCapacity: Int?
+    private var inputRecords: [ControlEvent] = []
     private var records: [ControlEvent] = []
     private var inputs: [String: JSONValue] = [:]
     private var feedback: [String: [String: JSONValue]] = [:]
@@ -21,18 +24,20 @@ public struct SurfaceControlSession: Sendable {
     public var source: PluginSource { profile.capabilities.contains("hardware") ? .hardware : .simulation }
     public private(set) var link: ControlLink?
 
-    public init(instanceID: String, epoch: String, mappingRevision: String, profile: ControlProfile, eventCapacity: Int = 1024, writeLimits: ControlWriteLimits? = nil) throws {
+    public init(instanceID: String, epoch: String, mappingRevision: String, profile: ControlProfile, eventCapacity: Int = 1024, writeLimits: ControlWriteLimits? = nil, inputEventCapacity: Int? = nil) throws {
         guard !instanceID.isEmpty, !epoch.isEmpty, !mappingRevision.isEmpty, eventCapacity > 0, eventCapacity <= 65536 else { throw ControlContractError("invalid_argument") }
         try profile.validate()
+        guard profile.capabilities.contains("events.input_retention") == (inputEventCapacity != nil) else { throw ControlContractError("invalid_profile") }
+        if let inputEventCapacity, !(1...65536).contains(inputEventCapacity) { throw ControlContractError("invalid_argument") }
         try writeLimits?.validate()
         guard profile.capabilities.contains("writes.independent_limits") == (writeLimits != nil) else { throw ControlContractError("invalid_profile") }
         expected = .init(instanceID: instanceID, epoch: epoch, mappingRevision: mappingRevision, profileID: profile.id, profileVersion: profile.version)
         link = profile.capabilities.contains("hardware") ? .init(state: .disconnected) : nil
-        self.profile = profile; self.eventCapacity = eventCapacity; self.writeLimits = writeLimits
+        self.profile = profile; self.eventCapacity = eventCapacity; self.writeLimits = writeLimits; self.inputEventCapacity = inputEventCapacity
     }
     /// Contract 1.1 convenience: uses the deterministic `profile.mappingRevision`.
-    public init(instanceID: String, epoch: String, profile: ControlProfile, eventCapacity: Int = 1024, writeLimits: ControlWriteLimits? = nil) throws {
-        try self.init(instanceID: instanceID, epoch: epoch, mappingRevision: profile.mappingRevision, profile: profile, eventCapacity: eventCapacity, writeLimits: writeLimits)
+    public init(instanceID: String, epoch: String, profile: ControlProfile, eventCapacity: Int = 1024, writeLimits: ControlWriteLimits? = nil, inputEventCapacity: Int? = nil) throws {
+        try self.init(instanceID: instanceID, epoch: epoch, mappingRevision: profile.mappingRevision, profile: profile, eventCapacity: eventCapacity, writeLimits: writeLimits, inputEventCapacity: inputEventCapacity)
     }
     /// Session numeric form: integral values representable as Int become `.number`, other numbers `.double`.
     /// Applied recursively, so equal numbers compare equal regardless of their wire representation.
@@ -234,6 +239,11 @@ public struct SurfaceControlSession: Sendable {
         let event = ControlEvent(expected: expected, sequence: String(sequence), input_sequence: publicInputSequence, writer_id: writerID, time: time, source: source,
                                  origin: origin, kind: kind, control_id: controlID, encoding: encoding, value: value,
                                  disposition: disposition, mapped_value: mappedValue.map(Self.normalized), reason: reason, hold_deadline: holdDeadline)
+        // No throwing work follows: both histories commit the same immutable event together.
+        if kind == .input, let inputEventCapacity {
+            inputRecords.append(event)
+            if inputRecords.count > inputEventCapacity { inputRecords.removeFirst(inputRecords.count - inputEventCapacity) }
+        }
         records.append(event)
         if records.count > eventCapacity { records.removeFirst(records.count - eventCapacity) }
         lastTime = time
@@ -249,6 +259,23 @@ public struct SurfaceControlSession: Sendable {
         let first = records.first.flatMap { UInt64($0.sequence) } ?? sequence
         guard cursor <= sequence, !(cursor < first && first - cursor > 1) else { throw ControlContractError("event_gap") }
         return .init(server_time: time, expected: expected, latest_sequence: String(sequence), latest_input_sequence: publicInputSequence, events: Array(records.filter { UInt64($0.sequence)! > cursor }.prefix(limit)), holds: holds.isEmpty ? nil : holds, link: link)
+    }
+    /// Explicit opt-in input history. Feedback never consumes this bounded retention area.
+    /// The old global journal and its gap/CAS rules remain unchanged.
+    public func inputEvents(expected identity: ControlExpected, afterInputSequence: String, limit: Int = 128, at time: Double) throws -> ControlInputEventPage {
+        guard let inputEventCapacity else { throw ControlContractError("unsupported_input_retention") }
+        try validateExpected(identity)
+        try validateReadTime(time)
+        try validateNoPendingExpiry(at: time)
+        guard let cursor = UInt64(afterInputSequence), String(cursor) == afterInputSequence,
+              limit > 0, limit <= 1024 else { throw ControlContractError("invalid_argument") }
+        guard cursor <= inputSequence else { throw ControlContractError("input_event_gap") }
+        if let first = inputRecords.first.flatMap({ UInt64($0.input_sequence!) }), cursor < first, first - cursor > 1 {
+            throw ControlContractError("input_event_gap")
+        }
+        return .init(expected: expected, server_time: time, latest_sequence: String(sequence), latest_input_sequence: String(inputSequence),
+                     input_event_capacity: inputEventCapacity, events: Array(inputRecords.filter { UInt64($0.input_sequence!)! > cursor }.prefix(limit)),
+                     holds: holds.isEmpty ? nil : holds, link: link)
     }
     /// Trusted host only. Validate before processing a copied host engine; record on a copied session.
     @discardableResult public func validateHardwareInput(_ input: ControlHardwareInput, at time: Double, writerID: String? = nil) throws -> ControlDescriptor {
@@ -279,7 +306,7 @@ public struct SurfaceControlSession: Sendable {
         try validateTime(time)
         let profile = profile ?? self.profile
         guard profile.capabilities.contains("hardware") else { throw ControlContractError("invalid_profile") }
-        var next = try SurfaceControlSession(instanceID: expected.instance_id, epoch: epoch, profile: profile, eventCapacity: eventCapacity, writeLimits: writeLimits)
+        var next = try SurfaceControlSession(instanceID: expected.instance_id, epoch: epoch, profile: profile, eventCapacity: eventCapacity, writeLimits: writeLimits, inputEventCapacity: inputEventCapacity)
         next.lastTime = time
         next.link = .init(state: linkState)
         self = next
@@ -299,7 +326,7 @@ public struct SurfaceControlSession: Sendable {
         try validateNoPendingExpiry(at: time)
         guard !epoch.isEmpty, epoch != expected.epoch else { throw ControlContractError("invalid_argument") }
         var next = try SurfaceControlSession(instanceID: expected.instance_id, epoch: epoch, mappingRevision: mappingRevision,
-                                             profile: profile ?? self.profile, eventCapacity: eventCapacity, writeLimits: writeLimits)
+                                             profile: profile ?? self.profile, eventCapacity: eventCapacity, writeLimits: writeLimits, inputEventCapacity: inputEventCapacity)
         next.lastTime = time
         self = next
     }

@@ -84,3 +84,12 @@ SURFACE_PANEL_TRACE_OUTPUT="$PWD/clients/python/surface_panel_demo/reference_act
 
 Regeneration is a development action, not a demo runtime dependency. Existing simulation discovery,
 published tool schemas, frozen fixtures and Provider 1.0 remain unchanged.
+
+
+A provider that returns an identity header can be pinned explicitly with
+`--provider-id ID --provider-header HEADER`; supply both or neither. There is no host-specific
+header default. These flags apply to both supported MCP protocols and retain the loopback URL,
+instance pin, anonymous token FD and display-only transport fence. They add no GUI endpoint:
+GUI hosts must separately enable an explicit virtual-only control-contract session with their
+own minimal display credential and canonical state. Default GUI catalogs remain unchanged;
+pointing this CLI at a GUI's older business tools does not create control-contract support.

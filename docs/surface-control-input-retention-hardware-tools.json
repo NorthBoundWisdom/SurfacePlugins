@@ -1,0 +1,285 @@
+{
+  "contract_version" : "1.5",
+  "schema_version" : 1,
+  "tools" : [
+    {
+      "inputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "after_input_sequence" : {
+            "maxLength" : 20,
+            "pattern" : "^(0|[1-9][0-9]*)$",
+            "type" : "string"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "limit" : {
+            "maximum" : 1024,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "after_input_sequence",
+          "expected",
+          "limit"
+        ],
+        "type" : "object"
+      },
+      "isMutation" : false,
+      "name" : "surface_control_input_events",
+      "outputSchema" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "events" : {
+            "items" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "control_id" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "disposition" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "encoding" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "expected" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "epoch" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "instance_id" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "mapping_revision" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "profile_id" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    },
+                    "profile_version" : {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [
+                    "epoch",
+                    "instance_id",
+                    "mapping_revision",
+                    "profile_id",
+                    "profile_version"
+                  ],
+                  "type" : "object"
+                },
+                "hold_deadline" : {
+                  "type" : "number"
+                },
+                "input_sequence" : {
+                  "maxLength" : 20,
+                  "pattern" : "^(0|[1-9][0-9]*)$",
+                  "type" : "string"
+                },
+                "kind" : {
+                  "enum" : [
+                    "input"
+                  ],
+                  "type" : "string"
+                },
+                "mapped_value" : {
+                  "anyOf" : [
+                    {
+                      "type" : "number"
+                    },
+                    {
+                      "type" : "boolean"
+                    },
+                    {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }
+                  ]
+                },
+                "origin" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "reason" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "sequence" : {
+                  "maxLength" : 20,
+                  "pattern" : "^(0|[1-9][0-9]*)$",
+                  "type" : "string"
+                },
+                "source" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                },
+                "time" : {
+                  "type" : "number"
+                },
+                "value" : {
+                  "anyOf" : [
+                    {
+                      "type" : "number"
+                    },
+                    {
+                      "type" : "boolean"
+                    },
+                    {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }
+                  ]
+                },
+                "writer_id" : {
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [
+                "control_id",
+                "disposition",
+                "encoding",
+                "expected",
+                "input_sequence",
+                "kind",
+                "origin",
+                "sequence",
+                "source",
+                "time",
+                "value"
+              ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "expected" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "epoch" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "instance_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "mapping_revision" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_id" : {
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "profile_version" : {
+                "minLength" : 1,
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "epoch",
+              "instance_id",
+              "mapping_revision",
+              "profile_id",
+              "profile_version"
+            ],
+            "type" : "object"
+          },
+          "holds" : {
+            "additionalProperties" : {
+              "type" : "number"
+            },
+            "type" : "object"
+          },
+          "input_event_capacity" : {
+            "maximum" : 65536,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "latest_input_sequence" : {
+            "maxLength" : 20,
+            "pattern" : "^(0|[1-9][0-9]*)$",
+            "type" : "string"
+          },
+          "latest_sequence" : {
+            "maxLength" : 20,
+            "pattern" : "^(0|[1-9][0-9]*)$",
+            "type" : "string"
+          },
+          "link" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "state" : {
+                "enum" : [
+                  "connected",
+                  "disconnected"
+                ],
+                "type" : "string"
+              }
+            },
+            "required" : [
+              "state"
+            ],
+            "type" : "object"
+          },
+          "server_time" : {
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "events",
+          "expected",
+          "input_event_capacity",
+          "latest_input_sequence",
+          "latest_sequence",
+          "link",
+          "server_time"
+        ],
+        "type" : "object"
+      }
+    }
+  ]
+}

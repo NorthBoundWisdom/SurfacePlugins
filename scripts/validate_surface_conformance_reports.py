@@ -42,7 +42,9 @@ with TestOnlyHardwareHost("schema-test-only-token") as host:
 print(json.dumps({"status": "pass", "hardware_read_only_reports": 1}))
 
 from surface_control_diagnostics import ReadOnlyClient, capture, verify
-capture_schema = json.loads((ROOT / "docs/surface-control-diagnostic-capture.schema.json").read_bytes())
+capture_schema14 = json.loads((ROOT / "docs/surface-control-diagnostic-capture.schema.json").read_bytes())
+Draft202012Validator.check_schema(capture_schema14)
+capture_schema = json.loads((ROOT / "docs/surface-control-diagnostic-capture-v1.5.schema.json").read_bytes())
 Draft202012Validator.check_schema(capture_schema)
 with TestOnlyHardwareHost("diagnostic-schema-test-only") as host:
     host.connected = False
@@ -54,3 +56,27 @@ with TestOnlyHardwareHost("diagnostic-schema-test-only") as host:
     assert diagnostic["diagnostic_status"] == "incomplete_or_failed" and diagnostic["exit_code"] == 1
     assert diagnostic["validated_page_count"] == 0 and diagnostic["physical_qualification"] is False
 print(json.dumps({"status": "pass", "diagnostic_capture_schema": 1, "disconnected_capture_keeps_nonzero": True}))
+
+# Execute the complete frozen SDK1.4 source, rather than relabeling a new capture with an
+# old version. Load only the diagnostic adapter against it; production imports are restored.
+import importlib.util
+from test_legacy_sdk import legacy
+current_sdk = sys.modules["surface_control"]
+try:
+    sys.modules["surface_control"] = legacy
+    spec = importlib.util.spec_from_file_location("diagnostics_sdk14_check", ROOT / "clients/python/surface_control_diagnostics/__init__.py")
+    legacy_diagnostics = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(legacy_diagnostics)
+finally:
+    sys.modules["surface_control"] = current_sdk
+with TestOnlyHardwareHost("diagnostic-sdk14-schema-test-only") as host:
+    host.connected = False
+    client14 = legacy_diagnostics.ReadOnlyClient(host.url, "diagnostic-sdk14-schema-test-only", host.instance_id, accepted_sources=("hardware",))
+    captured14 = legacy_diagnostics.capture(client14, host.profile["id"], host.profile["version"], limits={"max_polls": 1})
+    assert captured14["sdk_version"] == "1.4.0"
+    Draft202012Validator(capture_schema14).validate(captured14)
+    diagnostic14 = verify(captured14)
+    assert diagnostic14["capture_integrity"] == "verified_recorded_invariants"
+    assert diagnostic14["diagnostic_status"] == "incomplete_or_failed" and diagnostic14["exit_code"] == 1
+    assert diagnostic14["validated_page_count"] == 0 and diagnostic14["physical_qualification"] is False
+print(json.dumps({"status": "pass", "frozen_sdk14_original_capture_schema": True, "current_sdk15_capture_schema": True}))

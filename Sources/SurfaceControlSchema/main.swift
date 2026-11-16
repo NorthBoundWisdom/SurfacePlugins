@@ -4,10 +4,13 @@ import SurfacePluginContracts
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 let hardware = arguments.contains("--hardware")
-let options = arguments.filter { $0 != "--hardware" }
+let retained = arguments.contains("--input-retention")
+let options = arguments.filter { $0 != "--hardware" && $0 != "--input-retention" }
 guard options.isEmpty || options == ["--examples"] else { throw ControlContractError("invalid_argument") }
 let schema: JSONValue
-if hardware && options == ["--examples"] {
+if retained {
+    schema = try inputRetentionSchema(hardware: hardware, examples: options == ["--examples"])
+} else if hardware && options == ["--examples"] {
     let profile = ControlProfile(id: "example.hardware", version: "1.4", controls: [
         .init(id: "dial.1", inputKind: .absolute, encoding: .scalar, range: .init(minimum: 0, maximum: 100, step: 1), feedbackKinds: [.value], acceptsInput: false),
         .init(id: "touch.1", inputKind: .button, encoding: .boolean, acceptsInput: false)

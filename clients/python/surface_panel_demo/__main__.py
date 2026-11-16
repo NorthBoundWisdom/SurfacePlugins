@@ -50,6 +50,8 @@ def main(argv=None):
         parser.add_argument("--token-fd", type=int, required=True)
         parser.add_argument("--source", choices=("simulation", "hardware"), default="simulation")
         parser.add_argument("--protocol", choices=("2025-11-25", "2026-07-28"), default="2025-11-25")
+        parser.add_argument("--provider-id")
+        parser.add_argument("--provider-header")
         parser.add_argument("--hz", type=float, default=1)
         parser.add_argument("--duration", type=float, default=15)
         parser.add_argument("--max-age", type=float, default=1)
@@ -57,7 +59,7 @@ def main(argv=None):
         args = parser.parse_args(argv)
         token = read_token(args.token_fd)
         os.close(args.token_fd)
-        client = DisplayClient(args.url, token, args.instance_id, protocol=args.protocol, accepted_sources=(args.source,))
+        client = DisplayClient(args.url, token, args.instance_id, protocol=args.protocol, accepted_sources=(args.source,), provider_id=args.provider_id, provider_header=args.provider_header)
         mapping = load_mapping(args.mapping)
         for number in (signal.SIGINT, signal.SIGTERM):
             handlers[number] = signal.signal(number, stop)

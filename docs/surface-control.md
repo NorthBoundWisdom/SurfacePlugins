@@ -443,3 +443,98 @@ The fields of a host delivery manifest are described in
 `surface-control-schema --hardware` emits hardware output descriptors; add `--examples` for
 hardware discovery, unknown snapshot, event page, trusted input, accepted display and rejection
 examples. Default generation remains byte-identical to 1.3.
+
+## Explicit contract 1.5 capabilities
+
+Default simulation remains 1.3 and default hardware remains 1.4, including their existing
+discovery and seven tool descriptors. Only an explicitly enabled profile carrying one of
+these registered capabilities declares 1.5. Hosts deliberately version that profile and
+rotate epoch when enabling/disabling either option. The mapping hash algorithm is unchanged.
+The new read tool never changes the frozen Provider 1.0 tools or their errors.
+
+### Independent input retention (`events.input_retention`)
+
+The host option `--surface-input-event-capacity N` enables this capability and
+`input.independent_sequence`; without it there is no extra tool or retention area. N is an
+integer 1...65536 (1024 is the suggested explicit choice), passed as
+`SurfaceControlSession(..., inputEventCapacity: N)`. A declaration without capacity, or
+capacity without the capability, is invalid. The session stores immutable copies of input
+**event history**, bounded by N; this is not a second parameter store or an execution engine.
+Both histories receive the same event in the same nonthrowing append after validation.
+
+Register `SurfaceControlInputEventsTools.descriptors(source:)` only for that capability.
+Authenticate/authorize the existing read permission before calling its independent parser.
+The seven old `SurfaceControlTools` descriptors, parser and request enum remain unchanged.
+The optional tool is read-only (`isMutation=false`, rendered as MCP `readOnlyHint=true` by
+the host) and never consumes any write quota or grants write permissions:
+
+```json
+{"name":"surface_control_input_events","arguments":{"expected":{"instance_id":"I","epoch":"E","mapping_revision":"mapping","profile_id":"profile","profile_version":"version"},"after_input_sequence":"0","limit":128}}
+```
+
+All three arguments and all five expected identity fields are required; unknown fields are
+rejected. The cursor is a canonical UInt64 decimal string and limit is an integer 1...1024.
+The result requires `expected`, `server_time`, `latest_sequence`, `latest_input_sequence`,
+`input_event_capacity`, and `events`. It may carry current `holds`; hardware requires `link`,
+and simulation has no link. Every returned event retains its original `ControlEvent` fields,
+including global `sequence`, but is `kind: input` with a required `input_sequence`.
+
+Accepted **and ignored** input records, including no-change/suppressed input that the host
+actually recorded and successful system hold expiry, enter both histories. Feedback consumes
+only the original global sequence/FIFO, never the input retention area. Rejected validation,
+silent renewal, seeding, snapshots and reads create no event. Hold expiry retains its existing
+remote origin, system writer and `hold_expired` reason. Counter exhaustion, bad time, bad writer
+and failed expiry cannot commit either history or consume/clear a lease partially.
+
+If the current input highwater is I and the first retained input sequence is F, accept a
+cursor at most I and at least F-1; an empty fresh epoch accepts only 0. A future or discarded
+input cursor returns **`input_event_gap`**. Input traffic itself can exceed capacity; there is
+no unlimited-history promise. Return exactly the first `min(limit, I-cursor)` retained inputs,
+in contiguous input sequence order. Their global sequences strictly increase and can skip
+feedback. Read-time highwaters describe the whole current session, not the end of that page;
+advance a pagination cursor only to the final actual input. Empty pages do not skip input.
+Reset/new epoch/endpoint transition clears both histories, both counters, leases and accepted
+observations according to the existing transition rules, retaining the configured capacity.
+Unknown remains unknown; display values and sent messages never become observed inputs.
+
+New-tool error order is host authentication/read permission, strict parse, capability,
+existing expected identity order (instance/profile/mapping/epoch), read time, pending expiry,
+then cursor/gap. Direct session/SDK use without the capability returns
+`unsupported_input_retention`; an unregistered wire tool returns `unsupported_tool`.
+Existing error codes retain their meanings; the seven old tools never pass through this gate.
+Read transport failures remain `transport_unknown`, with no retry or fabricated empty page.
+
+SDK 1.5.0 adds an explicitly constructed `InputEventCursor`. It bootstraps after a same-identity
+snapshot and validates whole pages before committing any event, historical cursor or CAS
+highwater. It checks contiguous input sequence, increasing global sequence, original source,
+encoding/value/writer, monotonic time, freshness and hardware link. A failure permanently
+invalidates it. A historical page cannot decrease current client CAS highwaters; page position
+is independent of mutation/refresh highwaters. No automatic fallback or replay is provided.
+`EventCursor` still reads the original mixed FIFO; `BinaryRoleCursor` keeps its conservative
+global superseded/verify rule. Choosing either old cursor explicitly retains its old gap risk.
+
+Generate the new tool schemas/examples with `surface-control-schema --input-retention`,
+optionally `--hardware` and/or `--examples`. These are independent files named
+`surface-control-input-retention[-hardware]-{tools,examples}.json`; the original four generator
+invocations remain byte-identical. Their development validator is
+`scripts/validate_surface_input_retention.py`.
+
+### Owned virtual rehearsal (`session.owned_virtual_rehearsal`)
+
+This independent capability is hardware-source only and does not require input retention or
+register another tool. Its explicit 1.5 profile must use a host-owned rehearsal ID distinct
+from the physical profile. SDK hardware acceptance is still explicit, and remote input,
+renewal and reset remain forbidden. Allowed display kinds and host motion exclusions remain
+unchanged. **This declaration is not proof of endpoint ownership.** Hosts must structurally
+create and connect only their process-owned virtual endpoint references, never enumerate or
+match another endpoint, and prevent a running rehearsal from switching to physical access.
+
+Discovery's capability and persistent host logs identify rehearsal; logs must include
+`owned_virtual_rehearsal=true` and `physical_evidence=false`. Only these diagnostic captures
+and offline reports carry `rehearsal: {owned_virtual_rehearsal: true, physical_evidence: false}`.
+The verifier rejects missing/altered markers and always reports `physical_qualification=false`.
+Other modes have no new rehearsal field. SDK1.5 captures use the independent
+`surface-control-diagnostic-capture-v1.5.schema.json`; the original SDK1.4 capture schema stays
+unchanged, and offline verification still accepts valid SDK1.4 captures. Neither a rehearsal
+capability, successful software conformance nor a diagnostic report establishes physical
+qualification or permission to operate an actuator.

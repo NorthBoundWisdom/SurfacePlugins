@@ -217,6 +217,8 @@ def capture(client, profile_id, profile_version, *, required_controls=None, limi
         budget(document)
         discovery = client.discover(profiles=(profile_id,), profile_versions=(profile_version,))
         candidate = {**document, "discovery": copy.deepcopy(discovery)}
+        if getattr(client, "owned_virtual_rehearsal", False):
+            candidate["rehearsal"] = {"owned_virtual_rehearsal": True, "physical_evidence": False}
         budget(candidate)
         document = candidate
         if required_controls is not None:
@@ -299,10 +301,18 @@ def _verify(document):
     A valid capture can still be incomplete/unhealthy (exit 1). Invalid structure/evidence is exit 2.
     No offline check establishes authenticity, unrecorded actions or physical device qualification.
     """
-    check(isinstance(document, dict) and set(document) == ENVELOPE)
+    check(isinstance(document, dict))
+    rehearsal = "session.owned_virtual_rehearsal" in ((document.get("discovery") or {}).get("profile") or {}).get("capabilities", [])
+    check(set(document) == ENVELOPE | ({"rehearsal"} if rehearsal else set()))
+    if rehearsal:
+        marker = document["rehearsal"]
+        check(isinstance(marker, dict) and set(marker) == {"owned_virtual_rehearsal", "physical_evidence"}
+              and marker["owned_virtual_rehearsal"] is True and marker["physical_evidence"] is False)
     check(type(document["schema_version"]) is int and document["schema_version"] == 1)
     check(document["artifact"] == ARTIFACT and document["qualification"] == QUALIFICATION)
-    check(document["sdk_version"] == __version__)
+    check(document["sdk_version"] in ("1.4.0", "1.5.0"))
+    check(not rehearsal or document["sdk_version"] == "1.5.0")
+    check((document.get("discovery") or {}).get("contract_version") != "1.5" or document["sdk_version"] == "1.5.0")
     check(isinstance(document["limits"], dict))
     validate_limits(document["limits"])
     limits = document["limits"]
@@ -417,7 +427,7 @@ def _verify(document):
             check(False)
     _end(rebuilt, end["trigger"], end["reason"] if end["trigger"] == "error" else None, document["elapsed_s"], event_count, len(pages))
     check(rebuilt["end"] == end)
-    return {"schema_version": 1, "qualification": QUALIFICATION, "capture_integrity": "verified_recorded_invariants",
+    result = {"schema_version": 1, "qualification": QUALIFICATION, "capture_integrity": "verified_recorded_invariants",
             "diagnostic_status": "bounded_complete" if end["exit_code"] == 0 else "incomplete_or_failed",
             "exit_code": end["exit_code"], "termination": end["reason"], "checked": checked,
             "unavailable": unavailable, "event_count": event_count, "page_count": len(pages),
@@ -427,6 +437,9 @@ def _verify(document):
             "required_control_count": len(required) if required is not None else (len(client.profile["controls"]) if client.profile else None),
             "source": document["discovery"]["source"] if document["discovery"] is not None else None,
             "authenticity_verified": False, "physical_qualification": False}
+    if rehearsal:
+        result["rehearsal"] = {"owned_virtual_rehearsal": True, "physical_evidence": False}
+    return result
 
 
 def verify(document):
