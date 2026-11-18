@@ -22,8 +22,6 @@ Repository layout beyond Swift targets (never referenced by any Swift target):
   It has no runtime dependency on Swift or a consumer service and never writes inputs, renews or resets.
 - `docs/surface-control-tools.json`, `docs/surface-control-scenario.schema.json`, and `fixtures/`:
   the single source for published schemas and host scenario fixtures.
-- `integrations/pipe/`: consumer-specific Pipe trial example and test. It is not part of the SDK
-  zip or any generic host delivery; see its README for ownership and reset permission.
 
 Importing the SDK straight from a host's managed dependency cache (for example a host test that
 adds `build/dependencies/SurfacePlugins/clients/python` to `sys.path`) must not write bytecode:
@@ -31,8 +29,7 @@ set `PYTHONDONTWRITEBYTECODE=1`, run `python3 -B`, or set `sys.dont_write_byteco
 the import. A `__pycache__` directory makes the cache dirty and the host's dependency check fails.
 Importing from a delivered SDK zip writes nothing.
 
-Python checks: `python3 -m unittest discover -s clients/python/tests` and
-`python3 -m unittest discover -s integrations/pipe/tests`.
+Python checks: `python3 -m unittest discover -s clients/python/tests`.
 
 The test-only loopback host wakes its selector through a local socket when closing, while retaining
 its default 0.5-second service poll. Shutdown tests cover the default, a 60-second poll woken by an
